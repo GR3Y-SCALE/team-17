@@ -94,8 +94,18 @@ def main():
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    set_motor(board, 'M1', 0 if duty == 0 else duty + duty*(turn/10), mot_state[0 if duty < 0 else 1])
-                    set_motor(board, 'M2', 0 if duty == 0 else duty - duty*(turn/10), mot_state[0 if duty < 0 else 1])
+                    set_motor(
+                        board, 
+                        'M1', 
+                        0 if duty == 0 else duty + duty*(turn/10), 
+                        mot_state[0 if duty < 0 else 1]
+                    )
+                    set_motor(
+                        board, 
+                        'M2', 
+                        0 if duty == 0 else duty - duty*(turn/10), 
+                        mot_state[1 if duty < 0 else 0]
+                    )
                     last_cmd_time = time.time()
 
                 dt = time.time() - t0
