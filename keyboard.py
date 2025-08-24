@@ -113,6 +113,10 @@ Controls:
 
     period = 1.0 / args.rate
     last_cmd_time = 0.0
+    board.set_encoder_enable(board.ALL)                 # Set selected DC motor encoder enable
+    board.set_encoder_reduction_ratio(board.ALL, 43)    # Set selected DC motor encoder reduction ratio, test motor reduction ratio is 43.8
+
+    board.set_moter_pwm_frequency(1000)   # Set DC motor pwm frequency to 1000HZ
 
     try:
         with RawTerminal():
@@ -169,7 +173,7 @@ Controls:
                 if dt < period:
                     time.sleep(period - dt)
     finally:
-        stop_all(board)
+        board.motor_stop(board.ALL)
         print("\nExiting cleanly. Motors stopped.")
 
 if __name__ == "__main__":
