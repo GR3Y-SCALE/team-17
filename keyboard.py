@@ -20,8 +20,9 @@ class RawTerminal:
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
 
 def set_motor(board, motor_name, signed_duty, direction):
-    duty = int(abs(signed_duty))
-    board.motor_movement([getattr(board, motor_name)], direction, duty)
+    if signed_duty < 0:
+        direction = ~direction
+    board.motor_movement([getattr(board, motor_name)], mot_state[direction], int(abs(signed_duty)))
 
 def stop_all(board):
     try:
@@ -97,14 +98,14 @@ def main():
                     set_motor(
                         board, 
                         'M1', 
-                        0 if duty == 0 else duty + duty*(turn/10), 
-                        mot_state[0 if duty < 0 else 1]
+                        0 if duty == 0 else duty + duty*(turn/10), # Diferential
+                        0 if duty < 0 else 1 # motor direction CCW or CW
                     )
                     set_motor(
                         board, 
                         'M2', 
                         0 if duty == 0 else duty - duty*(turn/10), 
-                        mot_state[1 if duty < 0 else 0]
+                        1 if duty < 0 else 0
                     )
                     last_cmd_time = time.time()
 
