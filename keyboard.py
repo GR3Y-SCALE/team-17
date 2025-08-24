@@ -98,13 +98,13 @@ def main():
                     set_motor(
                         board, 
                         'M1', 
-                        0 if duty == 0 else duty + duty*(turn/10), # Diferential
+                        0 if duty == 0 else duty - duty*(turn/10), # Diferential
                         0 if duty < 0 else 1 # motor direction CCW or CW
                     )
                     set_motor(
                         board, 
                         'M2', 
-                        0 if duty == 0 else duty - duty*(turn/10), 
+                        0 if duty == 0 else duty + duty*(turn/10), 
                         1 if duty < 0 else 0
                     )
                     last_cmd_time = time.time()
