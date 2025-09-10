@@ -30,7 +30,6 @@ def stop_all(board):
         pass
 
 def main():
-    duty = 100
     running = True
 
     def cleanup_and_quit(*_):
@@ -75,6 +74,7 @@ def main():
     try:
         with RawTerminal():
             while running:
+                duty = 100
                 t0 = time.time()
                 k = read_key()
                 if k == "UP":
@@ -84,20 +84,20 @@ def main():
                     M1 = -duty
                     M2 = -duty
                 elif k == "LEFT":
-                    M1 = -duty
+                    M1 = 0
                     M2 = duty
                 elif k == "RIGHT":
                     M1 = duty
-                    M2 = -duty
+                    M2 = 0
                 elif k == "STOP":
-                    duty = 0; turn = 0
+                    duty = 0;
                     stop_all(board)
                 elif k == "QUIT":
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    board.motor_movement([board.M1], board.CW if M1 > 0 else board.CCW, int(abs(M1)))
-                    board.motor_movement([board.M2], board.CCW if M1 > 0 else board.CW, int(abs(M2)))
+                    board.motor_movement([board.M1], board.CW, M2)
+                    board.motor_movement([board.M2], board.CCW, M2)
                     last_cmd_time = time.time()
 
                 dt = time.time() - t0
