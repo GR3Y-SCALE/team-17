@@ -30,8 +30,7 @@ def stop_all(board):
         pass
 
 def main():
-    duty = 0
-    turn = 0
+    duty = 100
     running = True
 
     def cleanup_and_quit(*_):
@@ -97,8 +96,6 @@ def main():
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    direction1 = "CW" if duty > 0 else "CCW"
-                    direction1 = "CCW" if duty > 0 else "CW"
                     board.motor_movement([board.M1], board.CW if duty > 0 else board.CCW, int(abs(duty)))
                     board.motor_movement([board.M2], board.CCW if duty > 0 else board.CW, int(abs(duty)))
                     last_cmd_time = time.time()
