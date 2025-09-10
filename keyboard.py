@@ -96,8 +96,8 @@ def main():
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    board.motor_movement([board.M1], board.CW if duty > 0 else board.CCW, int(abs(duty)))
-                    board.motor_movement([board.M2], board.CCW if duty > 0 else board.CW, int(abs(duty)))
+                    board.motor_movement([board.M1], board.CW if M1 > 0 else board.CCW, int(abs(M1)))
+                    board.motor_movement([board.M2], board.CCW if M1 > 0 else board.CW, int(abs(M2)))
                     last_cmd_time = time.time()
 
                 dt = time.time() - t0
