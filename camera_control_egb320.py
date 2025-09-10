@@ -30,7 +30,7 @@ while True:
     print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
 
     ## Orange - Item ##
-    lower_orange = (17, 250, 145)       # Lower bound for orange in HSV
+    lower_orange = (13, 250, 145)       # Lower bound for orange in HSV
     upper_orange = (25, 255, 170)		# Upper bound for orange in HSV
     orange_mask = cv2.inRange(hsv_frame, lower_orange, upper_orange)
 
@@ -45,8 +45,8 @@ while True:
     yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
 
     ## Green - Person ##
-    lower_green = (15, 50, 15)		# Lower bound for green in HSV
-    upper_green = (40, 80, 40)		# Upper bound for green in HSV
+    lower_green = (40, 120, 50)		# Lower bound for green in HSV
+    upper_green = (70, 215, 70)		# Upper bound for green in HSV
     green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
 
     ## Combine Masks ##
