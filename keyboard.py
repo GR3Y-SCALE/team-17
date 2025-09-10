@@ -8,6 +8,9 @@ else:
     board = Board(7, 0x10)
 
 mot_state = [board.CCW, board.CW]
+while board.begin() != board.STA_OK: 
+    pass
+print('board initialised')
 
 class RawTerminal:
     def __init__(self):
@@ -18,11 +21,6 @@ class RawTerminal:
         return self
     def __exit__(self, exc_type, exc, tb):
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
-
-def set_motor(board, motor_name, signed_duty, direction):
-    if signed_duty < 0:
-        direction = ~direction
-    board.motor_movement([getattr(board, motor_name)], mot_state[direction], int(abs(signed_duty)))
 
 def stop_all(board):
     try:
@@ -81,13 +79,17 @@ def main():
                 t0 = time.time()
                 k = read_key()
                 if k == "UP":
-                    duty += 10
+                    M1 = duty
+                    M2 = duty
                 elif k == "DOWN":
-                    duty -= 10
+                    M1 = -duty
+                    M2 = -duty
                 elif k == "LEFT":
-                    turn += 10
+                    M1 = -duty
+                    M2 = duty
                 elif k == "RIGHT":
-                    turn -= 10
+                    M1 = duty
+                    M2 = -duty
                 elif k == "STOP":
                     duty = 0; turn = 0
                     stop_all(board)
@@ -95,18 +97,10 @@ def main():
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    set_motor(
-                        board, 
-                        'M1', 
-                        duty - duty*(turn/100), # Diferential
-                        0 if duty < 0 else 1 # motor direction CCW or CW
-                    )
-                    set_motor(
-                        board, 
-                        'M2', 
-                        duty + duty*(turn/100), 
-                        1 if duty < 0 else 0
-                    )
+                    direction1 = "CW" if duty > 0 else "CCW"
+                    direction1 = "CCW" if duty > 0 else "CW"
+                    board.motor_movement([getattr(board, M1)], board.direction1, int(abs(duty)))
+                    board.motor_movement([getattr(board, M2)], board.direction2, int(abs(duty)))
                     last_cmd_time = time.time()
 
                 dt = time.time() - t0
