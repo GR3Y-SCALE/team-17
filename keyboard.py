@@ -99,8 +99,8 @@ def main():
                 if time.time() - last_cmd_time >= period:
                     direction1 = "CW" if duty > 0 else "CCW"
                     direction1 = "CCW" if duty > 0 else "CW"
-                    board.motor_movement([getattr(board, M1)], board.direction1, int(abs(duty)))
-                    board.motor_movement([getattr(board, M2)], board.direction2, int(abs(duty)))
+                    board.motor_movement([board.M1], board.direction1, int(abs(duty)))
+                    board.motor_movement([board.M2], board.direction2, int(abs(duty)))
                     last_cmd_time = time.time()
 
                 dt = time.time() - t0
