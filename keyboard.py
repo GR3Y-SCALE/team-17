@@ -75,6 +75,8 @@ def main():
         with RawTerminal():
             while running:
                 duty = 100
+                M1 = 0
+                M2 = 0
                 t0 = time.time()
                 k = read_key()
                 if k == "UP":
@@ -96,7 +98,7 @@ def main():
                     break
 
                 if time.time() - last_cmd_time >= period:
-                    board.motor_movement([board.M1], board.CW, M2)
+                    board.motor_movement([board.M1], board.CW, M1)
                     board.motor_movement([board.M2], board.CCW, M2)
                     last_cmd_time = time.time()
 
