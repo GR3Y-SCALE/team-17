@@ -15,19 +15,19 @@ while True:
     ## Displaying Frames ##
     frame = cap.capture_array()
     frame = cv2.resize(frame, (320, 240))
-    frame = cv2.rotate(frame, cv2.ROTATE_180)
+    #frame = cv2.rotate(frame, cv2.ROTATE_180)
 
     ## Colour Spaces ##
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 		# Convert from BGR to HSV colourspace
 
     # Colour Tracker
-    box_w, box_h = 40,40
-    middle_x, middle_y = hsv_frame.shape[1] // 2, hsv_frame.shape[0] // 2
-    top_left = (middle_x - box_w // 2, middle_y - box_h // 2)
-    bottom_right = (middle_x + box_w // 2, middle_y + box_h // 2)
-    middle_hsv = hsv_frame[middle_x, middle_y]
-    cv2.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)
-    print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
+    # box_w, box_h = 5,5
+    # middle_x, middle_y = hsv_frame.shape[1] // 2, hsv_frame.shape[0] // 2
+    # top_left = (middle_x - box_w // 2, middle_y - box_h // 2)
+    # bottom_right = (middle_x + box_w // 2, middle_y + box_h // 2)
+    # middle_hsv = hsv_frame[middle_x, middle_y]
+    # cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
+    # print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
 
     ## Orange - Item ##
     lower_orange = (13, 250, 145)       # Lower bound for orange in HSV
@@ -36,7 +36,7 @@ while True:
 
     ## Blue - Shelves ##
     lower_blue = (100, 60, 20)		    # Lower bound for blue in HSV
-    upper_blue = (150, 110, 70)		# Upper bound for blue in HSV
+    upper_blue = (200, 110, 70)		# Upper bound for blue in HSV
     blue_mask = cv2.inRange(hsv_frame, lower_blue, upper_blue)
 
     ## Yellow - Bay ##
@@ -71,18 +71,18 @@ while True:
     FOCAL_CONST = 235
 
     # Orange Colour Tracking - Object
-    contours, _ = cv2.findContours(orange_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        largest_orange = max(contours, key=cv2.contourArea)
+    orange_contours, _ = cv2.findContours(orange_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if orange_contours:
+        largest_orange = max(orange_contours, key=cv2.contourArea)
         ox, oy, ow, oh = cv2.boundingRect(largest_orange)
         cv2.rectangle(frame, (ox, oy), (ox + ow, oy + oh), (0, 140, 255), 2)
 
-        REAL_ORANGE_WIDTH = 7.0  # adjust width
-        if ow > 0:
-            distance_orange = (REAL_ORANGE_WIDTH * FOCAL_CONST) / ow
-            cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 140, 255), 2)
-            print(f"Estimated distance to orange: {distance_orange:.1f} cm")
+        # REAL_ORANGE_WIDTH = 5.0  # adjust width
+        # if ow > 0:
+        #     distance_orange = (REAL_ORANGE_WIDTH * FOCAL_CONST) / ow
+        #     cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 140, 255), 2)
+        #     print(f"Estimated distance to orange: {distance_orange:.1f} cm")
 
     # Green Colour Tracking - Person
     green_contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -91,12 +91,12 @@ while True:
         gx, gy, gw, gh = cv2.boundingRect(largest_green)
         cv2.rectangle(frame, (gx, gy), (gx + gw, gy + gh), (0, 255, 0), 2)
 
-        REAL_GREEN_WIDTH = 7.0  # adjust width
-        if gw > 0:
-            distance_green = (REAL_GREEN_WIDTH * FOCAL_CONST) / gw
-            cv2.putText(frame, f"{distance_green:.1f}cm", (gx, gy - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-            print(f"Estimated distance to green: {distance_green:.1f} cm")
+        # REAL_GREEN_WIDTH = 6.0  # adjust width
+        # if gw > 0:
+        #     distance_green = (REAL_GREEN_WIDTH * FOCAL_CONST) / gw
+        #     cv2.putText(frame, f"{distance_green:.1f}cm", (gx, gy - 10),
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        #     print(f"Estimated distance to green: {distance_green:.1f} cm")
 
     # Blue Colour Tracking - Shelf Angle
     blue_contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -104,15 +104,16 @@ while True:
         largest_blue = max(blue_contours, key=cv2.contourArea)
         bx, by, bw, bh = cv2.boundingRect(largest_blue)
         cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (255, 0, 0), 2)
+
         # Find center of bounding box
-        shelf_center_x = bx + bw // 2
-        frame_center_x = frame.shape[1] // 2
-        offset_px = shelf_center_x - frame_center_x
+        #shelf_center_x = bx + bw // 2
+        #frame_center_x = frame.shape[1] // 2
+        #offset_px = shelf_center_x - frame_center_x
         # Estimate angle (in degrees) using FOV and pixel offset
-        angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
-        cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (bx, by - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-        print(f"Shelf angle: {angle_deg:.1f} degrees")
+        #angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
+        #cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (bx, by - 10),
+         #           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        #print(f"Shelf angle: {angle_deg:.1f} degrees")
 
 #############################################
 
