@@ -8,7 +8,7 @@ import math
 cap = picamera2.Picamera2()
 config = cap.create_video_configuration(main={"format":'XRGB8888',"size":(820,616)})
 cap.configure(config)
-cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,1.5)})
+cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,2.0)})
 cap.start()
 
 while True:
@@ -30,13 +30,13 @@ while True:
     # print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
 
     ## Orange - Item ##
-    lower_orange = (13, 250, 145)       # Lower bound for orange in HSV
-    upper_orange = (25, 255, 170)		# Upper bound for orange in HSV
+    lower_orange = (10, 230, 170)       # Lower bound for orange in HSV
+    upper_orange = (80, 255, 255)		# Upper bound for orange in HSV
     orange_mask = cv2.inRange(hsv_frame, lower_orange, upper_orange)
 
     ## Blue - Shelves ##
-    lower_blue = (100, 60, 20)		    # Lower bound for blue in HSV
-    upper_blue = (200, 110, 70)		# Upper bound for blue in HSV
+    lower_blue = (90, 230, 70)		    # Lower bound for blue in HSV
+    upper_blue = (120, 255, 255)		# Upper bound for blue in HSV
     blue_mask = cv2.inRange(hsv_frame, lower_blue, upper_blue)
 
     ## Yellow - Bay ##
@@ -45,8 +45,8 @@ while True:
     yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
 
     ## Green - Person ##
-    lower_green = (40, 120, 50)		# Lower bound for green in HSV
-    upper_green = (70, 215, 70)		# Upper bound for green in HSV
+    lower_green = (65, 200, 95)		# Lower bound for green in HSV
+    upper_green = (85, 255, 190)		# Upper bound for green in HSV
     green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
 
     ## Combine Masks ##
