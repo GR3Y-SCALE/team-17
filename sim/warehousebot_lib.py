@@ -281,6 +281,16 @@ class COPPELIA_WarehouseRobot(object):
 			itemRangeBearing[item_type] = []
 		itemRangeBearing[item_type].append(range_bearing)
 
+	def _get_robot_position(self):
+		"""Helper function to get the robot's current position OUTPUT [x, y, theta]"""
+		try:
+			position = self.sim.getObjectPosition(self.robotHandle, -1)
+			orientation = self.sim.getObjectOrientation(self.robotHandle, -1)
+			return [position[0], position[1], orientation[2]]
+		except Exception as e:
+			print(f"Error getting robot position: {e}")
+			return None
+		
 	def GetDetectedObjects(self, objects=None):
 		"""
 		Gets the range and bearing to all detected objects in the camera's field of view.
@@ -479,6 +489,7 @@ class COPPELIA_WarehouseRobot(object):
 			# Calculate speed limits
 			minWheelSpeed = self.robotParameters.minimumLinearSpeed / self.robotParameters.wheelRadius
 			maxWheelSpeed = self.robotParameters.maximumLinearSpeed / self.robotParameters.wheelRadius
+			#maxWheelSpeed = 20 #go baby go
 
 			# Calculate individual wheel speeds
 			leftWheelSpeed = (x_dot - 0.5*theta_dot*self.robotParameters.wheelBase) / self.robotParameters.wheelRadius + self.leftWheelBias
@@ -506,6 +517,58 @@ class COPPELIA_WarehouseRobot(object):
 
 		elif self.robotParameters.driveType == 'holonomic':
 			print('Holonomic drive not yet implemented')
+
+	def driveDistance(self, dist, rot_degrees):
+		"""
+		Drive a specified distance and/or rotate by an angle, then stop.
+		- Distance in meters (forward +, backward -)
+		- Angle in degrees (CCW +, CW -)
+
+		Blocks until the maneuver completes or a safety timeout occurs.
+		"""
+		# Early exit if nothing to do
+		if (dist is None or rot_degrees is None):
+			return
+		if dist == 0 and rot_degrees == 0:
+			return
+
+		start_pose = self._get_robot_position()
+		if start_pose is None:
+			print("Error: Unable to get robot position for driveDistance")
+			return
+		
+		dt_sleep = 0.01                # 10 ms update
+		max_rot_vel = 0.1           # rad/s
+		max_forward_vel = 0.01       # m/s
+		safety_timeout = 10         # seconds
+
+		# Rotate first (if requested)
+		if rot_degrees != 0:
+			rot_start_time = time.time()
+			target_heading = start_pose[2] + math.radians(rot_degrees)
+			print(f"Rotating {rot_degrees:.1f} degrees from {math.degrees(start_pose[2]):.2f} to heading {math.degrees(target_heading):.1f} deg")
+			self.SetTargetVelocities(0.0, max_rot_vel if rot_degrees > 0 else -max_rot_vel)
+			while safety_timeout > (time.time() - rot_start_time) and abs(self._get_robot_position()[2] - target_heading) > 0.01:
+				self.UpdateObjectPositions()
+				time.sleep(dt_sleep)
+			print(f"Rotation complete, currently: {math.degrees(self._get_robot_position()[2]):.1f} deg")
+		
+		if dist != 0:
+			drive_start_time = time.time()
+			target_distance = start_pose[0] + dist if dist > 0 else -dist
+			print(f"Driving {'forward' if dist > 0 else 'backward'} {dist:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
+			self.SetTargetVelocities(max_forward_vel if dist > 0 else -max_forward_vel, 0.0)
+			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[0] - target_distance) > 0.001:
+				self.UpdateObjectPositions()
+				time.sleep(dt_sleep)
+			print(f"Drive complete, currently: {self._get_robot_position()[0]:.2f} m")
+
+
+		# 3) Cleanup: ensure full stop
+		self.SetTargetVelocities(0.0, 0.0)
+		time.sleep(0.02)
+		print(f"Drive complete: {dist:.2f} m, {rot_degrees:.1f} deg")
+
 
 	def itemCollected(self):
 		"""
@@ -1715,4 +1778,3 @@ class SceneParameters(object):
 		# Robot starting position [x, y, theta] in metres and radians
 		# Set to None to use current CoppeliaSim position
 		self.robotStartingPosition = None
-

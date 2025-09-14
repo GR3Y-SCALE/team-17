@@ -1,42 +1,29 @@
 #!/usr/bin/python
 
-"""
-EGB320 CoppeliaSim Warehouse Robot Example
-
-GETTING STARTED:
-===============
-1. Open CoppeliaSim
-2. Load the warehouse robot scene file
-3. Run this Python script
-4. The robot will connect to CoppeliaSim and start detecting objects
-
-WHAT THIS EXAMPLE DOES:
-======================
-- Connects to CoppeliaSim simulation
-- Sets up a warehouse scene with items at picking stations
-- Continuously detects objects using the robot's camera
-- Shows how to control robot movement
-- Demonstrates item collection and dropping
-
-STUDENT TASKS:
-=============
-- Modify the robot movement commands in the main loop
-- Implement navigation algorithms using object detection data
-- Add logic to collect items and deliver them to shelves
-- Experiment with different robot parameters
-
-For more information, see the documentation in warehousebot_lib.py
-"""
-
 # Import the warehouse bot library
-from sim.warehousebot_lib import *
+from warehousebot_lib import *
 
 # Import additional modules
-import os
+import os,sys,time
+from collections import namedtuple
+# my stuff
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from navigation.NavClass import NavClass
+
+Obstacle = namedtuple('Obstacle', ['distance_to_robot', 'degree'])
 
 def clear_screen():
 	"""Clear the terminal screen for better output readability"""
 	os.system('cls' if os.name == 'nt' else 'clear')
+
+# def driveDistance(x, rot):
+# 	robotHandle = warehouseBotSim.robotHandle
+# 	initialPos = warehouseBotSim.getRobotPosition()
+# 	initialOrientation = warehouseBotSim.getRobotOrientation()
+# 	distanceTravelled = 0
+# 	angleTurned = 0
+# 	warehouseBotSim.SetTargetVelocities(x, rot)
+# 	while distanceTravelled < abs(x):
 
 # CONFIGURE SCENE PARAMETERS
 sceneParameters = SceneParameters()
@@ -85,11 +72,11 @@ robotParameters.sync = False  # Use asynchronous mode (recommended)
 if __name__ == '__main__':
 	# Use try-except to handle Ctrl+C gracefully
 	try:
-		print("EGB320 CoppeliaSim Warehouse Robot Example")
+		print("EGB320 CoppeliaSim Warehouse Robot")
 		print("Press Ctrl+C to stop the simulation\n")
 		
 		# Enable/disable debug output
-		show_debug_info = False
+		show_debug_info = True
 
 		# Create and initialize the warehouse robot
 		print("Connecting to CoppeliaSim...")
@@ -98,15 +85,27 @@ if __name__ == '__main__':
 		
 		# Start the simulation
 		warehouseBotSim.StartSimulator()
+		navigation = NavClass(60)
 
 		# Main control loop
 		print("Starting main control loop...")
 		print("Robot is now ready for navigation commands.")
 		
+		goal_deg = None
+		warehouseBotSim.SetTargetVelocities(0.0, 0.0)  # Stop the robot
+		dt = 0.1  # desired step size (50 ms)
+		last_time = time.time()
+
+		forward_vel = 0.0
+		rot_vel = 0.0
 		while True:
-			# Set robot movement (forward_velocity, rotation_velocity)
-			# Students: Replace these values with your navigation algorithm
-			warehouseBotSim.SetTargetVelocities(0.0, 0.0)  # Stop the robot
+			now = time.time()
+			elapsed = now - last_time
+			if elapsed < dt:
+				time.sleep(dt - elapsed)
+				continue
+			last_time = now
+			
 
 			# Get all detected objects in camera field of view
 			objectsRB = warehouseBotSim.GetDetectedObjects([
@@ -137,23 +136,53 @@ if __name__ == '__main__':
 				print_debug_range_bearing("Row Markers", rowMarkerRB)
 				print_debug_range_bearing("Shelves", shelfRB)
 				print_debug_range_bearing("Picking Stations", pickingStationRB)
+				print(warehouseBotSim._get_robot_position())
 				print("=" * 50)
 
 			# Update object positions (required for accurate detection)
 			warehouseBotSim.UpdateObjectPositions()
-			
-			# Students: Add your navigation and control logic here
-			
-			# Example item collection (uncomment to test)
-			# success, station = warehouseBotSim.CollectItem(closest_picking_station=True)
-			# if success:
-			#     print(f"Collected item from station {station}")
+			# # 1. Find the Goal (Picking Station 1)
+			# # We check if the data for station 1 (at index 0) exists.
+			# if pickingStationRB is not None and pickingStationRB[0] is not None:
+			# 	# station1_data is a list: [range, bearing]
+			# 	bearing_in_radians = pickingStationRB[0][1]
+			# 	goal_deg = int(math.degrees(bearing_in_radians))
+			# else:
+			# 	goal_deg = None
 
-			# Example item dropping (uncomment to test)
-			# if warehouseBotSim.itemCollected():
-			#     success, shelf_info = warehouseBotSim.DropItemInClosestShelfBay()
-			#     if success:
-			#         print(f"Dropped item at shelf {shelf_info['shelf']}")
+			# # 2. Format Obstacle Data for NavClass
+			# nav_obstacles = []
+			# # Check if any obstacles were detected
+			# if obstaclesRB is not None:
+			# 	# Loop through each detected obstacle
+			# 	for obs in obstaclesRB:
+			# 		# obs is a list: [range, bearing]
+			# 		dist_to_obs = obs[0] # Access range (distance) from index 0
+			# 		bearing_rad = obs[1] # Access bearing from index 1
+					
+			# 		formatted_obs = Obstacle(
+			# 			distance_to_robot=dist_to_obs,
+			# 			degree=int(math.degrees(bearing_rad))
+			# 		)
+			# 		nav_obstacles.append(formatted_obs)
+
+			# 3. Calculate Velocities and Set Robot Movement
+			
+
+			# if goal_deg is not None:
+			# 	nav_results = navigation.calculate_goal_velocities(goal_deg, nav_obstacles)
+			# 	forward_vel = nav_results['forward_vel']
+			# 	rot_vel = nav_results['rotational_vel']
+			# 	print(f"Goal Found at {goal_deg} deg. -> Fwd: {forward_vel:.2f} m/s, Rot: {rot_vel:.2f} rad/s")
+			
+			# else:
+			# 	print("Searching for goal (Picking Station 1)...")
+			# 	rot_vel = 0.15 # Spin slowly to find the goal
+
+			# warehouseBotSim.SetTargetVelocities(forward_vel, rot_vel)
+			warehouseBotSim.driveDistance(-0.5, 0.0)  # Rotate 15 degrees
+			break
+	
 
 	except KeyboardInterrupt:
 		print("\nStopping simulation...")
