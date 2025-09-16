@@ -4,6 +4,7 @@ from navigation import NavMath as navmath
 import numpy as np
 import math
 import time
+import matplotlib.pyplot as plt
 
 debug = True
 
@@ -32,7 +33,7 @@ class NavClass:
         attractive_field[navmath.clip_deg_fov(goal_deg, self.FOV)] = 1 # Highest potential is where the goal is
         gradient = 1 / 30
         for angle in range(0, int((self.FOV / 2 + 1))):
-            attractive_field[navmath.clip_deg_fov(goal_deg - angle, self.FOV)] = max(0, 1 - angle * gradient)
+            attractive_field[navmath.clip_deg_fov(goal_deg - angle, self.FOV)] = 1 - angle * gradient
             attractive_field[navmath.clip_deg_fov(goal_deg + angle, self.FOV)] = 1 - angle * gradient
         return attractive_field
 
@@ -60,16 +61,17 @@ class NavClass:
         
         return repulsive_field
 
-    def calculate_goal_velocities(self, goal_deg, obstacles):
+    def calculate_goal_velocities(self, goal_deg, obstacles=None):
         MAX_ROBOT_VEL = 0.05
-        MAX_ROBOT_ROT = 0.2
-        GOAL_P = 0.05 # Proportional bias
-        ROTATIONAL_BIAS = 0.05
+        MAX_ROBOT_ROT = 0.05
+        GOAL_P = 0.01 # Proportional bias
+        ROTATIONAL_BIAS = 0.01
         CAMERA_FOV = self.FOV # Use the FOV from the class
 
         nav_state = {}
         # Call methods using self
-        nav_state['attractive_field'] = self.compute_attractive_field(goal_deg)
+        goal_deg_reversed = int((CAMERA_FOV / 2) - goal_deg)
+        nav_state['attractive_field'] = self.compute_attractive_field(goal_deg_reversed) # reversed heading to match API
 
         if obstacles is None or len(obstacles) == 0:
             nav_state['repulsive_field'] = np.zeros(CAMERA_FOV + 1)
@@ -91,5 +93,21 @@ class NavClass:
         # Update class members
         self.rot_vel = nav_state['rotational_vel']
         self.forward_vel = nav_state['forward_vel']
+        if debug:
+            plt.figure(2)
+            plt.clf()
+
+            plt.subplot(3,1,1)
+            plt.plot(nav_state['attractive_field'], label='Attractive Field')
+
+            plt.subplot(3,1,2)
+            plt.plot(nav_state['repulsive_field'], label='Repulsive Field', color='r')
+
+            plt.subplot(3,1,3)
+            plt.plot(nav_state['residual_map'], label='Residual Map', color='g')
+            plt.axvline(x=heading_angle, color='k', linestyle='--', label='Heading Angle')
+            plt.legend()
+            plt.pause(0.001)
+            plt.draw()
 
         return nav_state

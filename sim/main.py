@@ -59,7 +59,7 @@ robotParameters.cameraTilt = 0.0                  # Camera tilt angle (radians)
 robotParameters.maxItemDetectionDistance = 1.0         # Items
 robotParameters.maxPackingBayDetectionDistance = 2.5   # Picking stations
 robotParameters.maxObstacleDetectionDistance = 1.5     # Obstacles
-robotParameters.maxRowMarkerDetectionDistance = 2.5    # Row markers
+robotParameters.maxRowMarkerDetectionDistance = 3.0    # Row markers
 
 # Item collection settings
 robotParameters.collectorQuality = 1              # Collector reliability (0-1)
@@ -175,12 +175,32 @@ if __name__ == '__main__':
 			# 	rot_vel = nav_results['rotational_vel']
 			# 	print(f"Goal Found at {goal_deg} deg. -> Fwd: {forward_vel:.2f} m/s, Rot: {rot_vel:.2f} rad/s")
 			
-			# else:
-			# 	print("Searching for goal (Picking Station 1)...")
-			# 	rot_vel = 0.15 # Spin slowly to find the goal
 
-			# warehouseBotSim.SetTargetVelocities(forward_vel, rot_vel)
-			warehouseBotSim.driveDistance(-0.5, 0.0)  # Rotate 15 degrees
+			# localise to known position, the third row marker
+			if rowMarkerRB[2] is None:
+				print("Searching for third row marker...")
+				warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+				while rowMarkerRB[2] is None:
+					print_debug_range_bearing("Row Markers", rowMarkerRB)
+					warehouseBotSim.UpdateObjectPositions()
+					_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+					time.sleep(0.01)
+				print("Found! Entering...") 
+				warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+			# get nav data
+			warehouseBotSim.UpdateObjectPositions()
+			marker_heading = rowMarkerRB[2][1]
+			nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
+			warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
+			while rowMarkerRB[2][0] > 0.1:
+				warehouseBotSim.UpdateObjectPositions()
+				_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+				marker_heading = rowMarkerRB[2][1]
+				nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
+				warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
+				time.sleep(0.001)
+			warehouseBotSim.SetTargetVelocities(0.0,0.0)
+			print("Stopping at 10CM before marker")
 			break
 	
 
