@@ -21,13 +21,13 @@ while True:
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 		# Convert from BGR to HSV colourspace
 
     # Colour Tracker
-    # box_w, box_h = 5,5
-    # middle_x, middle_y = hsv_frame.shape[1] // 2, hsv_frame.shape[0] // 2
-    # top_left = (middle_x - box_w // 2, middle_y - box_h // 2)
-    # bottom_right = (middle_x + box_w // 2, middle_y + box_h // 2)
-    # middle_hsv = hsv_frame[middle_x, middle_y]
-    # cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
-    # print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
+    box_w, box_h = 5,5
+    middle_x, middle_y = hsv_frame.shape[1] // 2, hsv_frame.shape[0] // 2
+    top_left = (middle_x - box_w // 2, middle_y - box_h // 2)
+    bottom_right = (middle_x + box_w // 2, middle_y + box_h // 2)
+    middle_hsv = hsv_frame[middle_x, middle_y]
+    cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
+    print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
 
     ## Orange - Item ##
     lower_orange = (10, 230, 170)       # Lower bound for orange in HSV
@@ -49,10 +49,16 @@ while True:
     upper_green = (85, 255, 190)		# Upper bound for green in HSV
     green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
 
+
+    lower_black = (20, 50, 50)
+    upper_black = (30, 160, 120)
+    black_mask = cv2.inRange(hsv_frame, lower_black, upper_black)
+
     ## Combine Masks ##
     combined_mask = cv2.bitwise_or(orange_mask, blue_mask)
     combined_mask = cv2.bitwise_or(combined_mask, yellow_mask)
     combined_mask = cv2.bitwise_or(combined_mask, green_mask)
+    combined_mask = cv2.bitwise_or(combined_mask, black_mask)
 
     # # Print which color masks are detected
     # if np.any(orange_mask):
@@ -83,7 +89,11 @@ while True:
         #     cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
         #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 140, 255), 2)
         #     print(f"Estimated distance to orange: {distance_orange:.1f} cm")
-
+    # cv2.imshow("Orange Mask", orange_mask)
+    # cv2.imshow("Blue Mask", blue_mask)
+    # cv2.imshow("Yellow Mask", yellow_mask)
+    # cv2.imshow("Green Mask", green_mask)
+    # cv2.imshow("Combined Mask", combined_mask)
     # Green Colour Tracking - Person
     green_contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if green_contours:
@@ -102,8 +112,8 @@ while True:
     blue_contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if blue_contours:
         largest_blue = max(blue_contours, key=cv2.contourArea)
-        bx, by, bw, bh = cv2.boundingRect(largest_blue)
-        cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (255, 0, 0), 2)
+        ux, uy, uw, uh = cv2.boundingRect(largest_blue)
+        cv2.rectangle(frame, (ux, uy), (ux + uw, uy + uh), (255, 0, 0), 2)
 
         # Find center of bounding box
         #shelf_center_x = bx + bw // 2
@@ -115,14 +125,27 @@ while True:
          #           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         #print(f"Shelf angle: {angle_deg:.1f} degrees")
 
+        black_contours, _ = cv2.findContours(black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if black_contours:
+            largest_black = max(black_contours, key=cv2.contourArea)
+            bx, by, bw, bh = cv2.boundingRect(largest_black)
+            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+        for cnt in black_contours:
+            approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
+            # print(len(approx))
+            # if len(approx) == 1:
+            #     print("Circle")
+            # else:
+            #     print("Square")
+
 #############################################
 
     # Display the masks
-    cv2.imshow("Orange Mask", orange_mask)
-    cv2.imshow("Blue Mask", blue_mask)
-    cv2.imshow("Yellow Mask", yellow_mask)
-    cv2.imshow("Green Mask", green_mask)
-    cv2.imshow("Combined Mask", combined_mask)
+    # cv2.imshow("Orange Mask", orange_mask)
+    # cv2.imshow("Blue Mask", blue_mask)
+    # cv2.imshow("Yellow Mask", yellow_mask)
+    # cv2.imshow("Green Mask", green_mask)
+    # cv2.imshow("Combined Mask", combined_mask)
     cv2.imshow("CameraImage", frame)     # Display the obtained frame in a window called "CameraImage"
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
