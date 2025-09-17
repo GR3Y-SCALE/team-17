@@ -144,8 +144,20 @@ while True:
             largest_black = max(black_contours, key=cv2.contourArea)
             bx, by, bw, bh = cv2.boundingRect(largest_black)
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+
+        num_circle_contours = len(black_contours)
+        num_circle_contours = 0
         for cnt in black_contours:
             approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
+            area = cv2.contourArea(cnt)
+            if area < 10:
+                (x,y), radius = cv2.minEnclosingCircle(cnt)
+                circle_area = math.pi * (radius ** 2)
+                if area / circle_area > 0.7:
+                    num_circle_contours += 1
+            # print(f"Number of circle-like contours: {num_circle_contours}")
+        
+            # Shape Detection (Circle vs Square)
             # print(len(approx))
             # if len(approx) == 1:
             #     shape = "Circle"
