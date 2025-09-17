@@ -6,9 +6,11 @@ from warehousebot_lib import *
 # Import additional modules
 import os,sys,time
 from collections import namedtuple
+from enum import Enum, auto
 # my stuff
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from navigation.NavClass import NavClass
+from navigation.state_machine import StateMachine
 
 Obstacle = namedtuple('Obstacle', ['distance_to_robot', 'degree'])
 
@@ -28,7 +30,7 @@ sceneParameters.pickingStationContents[2] = warehouseObjects.bottle  # Bottle at
 
 # Set obstacle starting positions [x, y] in meters
 # Use -1 to keep current CoppeliaSim position, None to disable obstacle
-sceneParameters.obstacle0_StartingPosition = [-0.2, -0.25]
+sceneParameters.obstacle0_StartingPosition = [-1, -1]
 sceneParameters.obstacle1_StartingPosition = -1  # Use current position
 sceneParameters.obstacle2_StartingPosition = -1  # Use current position
 
@@ -77,7 +79,10 @@ if __name__ == '__main__':
 		
 		# Start the simulation
 		warehouseBotSim.StartSimulator()
-		navigation = NavClass(60)
+		# Initialise state machine with the simulator and pass it into NavClass
+		sm = StateMachine(warehouseBotSim)
+		sm.update_state('startup_done')
+		navigation = NavClass(60, state_machine=sm)
 
 		# Main control loop
 		print("Starting main control loop...")
@@ -85,120 +90,223 @@ if __name__ == '__main__':
 		
 		goal_deg = None
 		warehouseBotSim.SetTargetVelocities(0.0, 0.0)  # Stop the robot
-		dt = 0.1  # desired step size (50 ms)
-		last_time = time.time()
+		
 
 		forward_vel = 0.0
 		rot_vel = 0.0
+
+		
+
+		# Get all detected objects in camera field of view
+		objectsRB = warehouseBotSim.GetDetectedObjects([
+			warehouseObjects.items,                # Items (bowls, mugs, etc.)
+			warehouseObjects.shelves,              # Storage shelves
+			warehouseObjects.row_markers,          # Navigation markers
+			warehouseObjects.obstacles,            # Obstacles to avoid
+			warehouseObjects.pickingStation,       # Main picking station
+			warehouseObjects.PickingStationMarkers # Individual picking stations
+		])
+
+		# Unpack the detection results
+		itemsRB, packingStationRB, obstaclesRB, rowMarkerRB, shelfRB, pickingStationRB = objectsRB
+
+		# Optional: Get camera image for computer vision processing
+		# resolution, image_data = warehouseBotSim.GetCameraImage()
+
+		# Clear screen and show current status
+		if show_debug_info:
+			clear_screen()
+			print("EGB320 Warehouse Robot - Object Detection Status")
+			print("=" * 50)
+			
+			# Display detected objects
+			print_debug_range_bearing("Items", itemsRB)
+			print_debug_range_bearing("Packing Station", packingStationRB)
+			print_debug_range_bearing("Obstacles", obstaclesRB)
+			print_debug_range_bearing("Row Markers", rowMarkerRB)
+			print_debug_range_bearing("Shelves", shelfRB)
+			print_debug_range_bearing("Picking Stations", pickingStationRB)
+			print(warehouseBotSim._get_robot_position())
+			print("=" * 50)
+
+		# Update object positions (required for accurate detection)
+		time.sleep(1)
+		warehouseBotSim.UpdateObjectPositions()
+		if shelfRB[5] is None:
+			# Cannot see the 5th shelf so turn to find it
+			print("Searching for fifth shelf...")
+			while shelfRB[5] is None:
+				warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+				warehouseBotSim.UpdateObjectPositions()
+				_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
+				time.sleep(0.01)
+			warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+			print("Found! Going to waypoint...")
+		while shelfRB[5][0] > 0.8:
+			warehouseBotSim.UpdateObjectPositions()
+			_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
+			nav_data = navigation.calculate_goal_velocities(int(math.degrees(shelfRB[5][1])))
+			warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
+			time.sleep(0.001)
+		warehouseBotSim.SetTargetVelocities(0.0,0.0)
+		print("Stopping at 50CM before shelf")
+		time.sleep(1)
+
+
+		# localise to known position, the third row marker
+		if rowMarkerRB[2] is None:
+			print("Searching for third row marker...")
+			warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+			while rowMarkerRB[2] is None:
+				print_debug_range_bearing("Row Markers", rowMarkerRB)
+				warehouseBotSim.UpdateObjectPositions()
+				_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+				time.sleep(0.01)
+			print("Found! Entering...") 
+			warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+
+
+		warehouseBotSim.UpdateObjectPositions()
+		marker_heading = rowMarkerRB[2][1]
+		nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
+		warehouseBotSim.SetTargetVelocities(0.03, -nav_data['rotational_vel'])
+		while rowMarkerRB[2][0] > 0.3:
+			warehouseBotSim.UpdateObjectPositions()
+			_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+			marker_heading = rowMarkerRB[2][1]
+			nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
+			warehouseBotSim.SetTargetVelocities(0.03, -nav_data['rotational_vel'])
+			time.sleep(0.001)
+		warehouseBotSim.SetTargetVelocities(0.0,0.0)
+		print("Stopping at 10CM before marker")
+		time.sleep(1)
+		
+		warehouseBotSim.UpdateObjectPositions()
+		_, _, _, _, _, pickingStationRB = warehouseBotSim.GetDetectedObjects([warehouseObjects.PickingStationMarkers])
+		# Known distance from third marker, now reverse:
+		warehouseBotSim.driveDistance(-1.5, 0.0, 0.0)
+		time.sleep(1)
+		warehouseBotSim.driveDistance(0.0, 0.0, 90.0)
+		time.sleep(1)
+		warehouseBotSim.driveDistance(0.0, 0.45, 0.0)
+		time.sleep(1)
+		warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+
+		# now look for picking station 1
+		while pickingStationRB[0] is None:
+			warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+			warehouseBotSim.UpdateObjectPositions()
+			_, _, _, _, _, pickingStationRB = warehouseBotSim.GetDetectedObjects([warehouseObjects.PickingStationMarkers])
+			time.sleep(0.01)
+		warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+
+		# now at picking station 1, here comes the meat and potatoes
+		class AwesomeSM(Enum):
+			COLLECT_ITEM = auto()
+			FIND_SHELF = auto()
+			DESPOSIT_ITEM = auto()
+			RETURN_TO_PICKING_STATION = auto()
+		state = AwesomeSM.COLLECT_ITEM
+		item_in_gripper = False
+
+		# order to visit picking stations (use list, not set; sets are unordered/non-indexable)
+		picking_station_number = [0, 1, 2]
+		shelf_number = [0, 3, 5]
+		iteration = 0
+		dt = 0.1  # desired step size (50 ms)
+		last_time = time.time()
+		CAMERA_FOV = 60  # degrees, must match NavClass FOV
+
 		while True:
 			now = time.time()
 			elapsed = now - last_time
 			if elapsed < dt:
 				time.sleep(dt - elapsed)
 				continue
-			last_time = now
-			
+			last_time = now 
 
-			# Get all detected objects in camera field of view
-			objectsRB = warehouseBotSim.GetDetectedObjects([
-				warehouseObjects.items,                # Items (bowls, mugs, etc.)
-				warehouseObjects.shelves,              # Storage shelves
-				warehouseObjects.row_markers,          # Navigation markers
-				warehouseObjects.obstacles,            # Obstacles to avoid
-				warehouseObjects.pickingStation,       # Main picking station
-				warehouseObjects.PickingStationMarkers # Individual picking stations
-			])
 
-			# Unpack the detection results
-			itemsRB, packingStationRB, obstaclesRB, rowMarkerRB, shelfRB, pickingStationRB = objectsRB
+			match state:
+				case AwesomeSM.COLLECT_ITEM:
+					if item_in_gripper == False:
+						print('Aligning myself with the picking bay...')
+						chosen_station = pickingStationRB[picking_station_number[iteration]]
+						if chosen_station[0] is None:
+							print('Lost, nuding a bit more...')
+							warehouseBotSim.SetTargetVelocities(0.0, -0.1)
+							warehouseBotSim.UpdateObjectPositions()
+							_, _, _, _, _, pickingStationRB = warehouseBotSim.GetDetectedObjects([warehouseObjects.PickingStationMarkers])
+						warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+						while chosen_station[0] > 0.1 and chosen_station[0] is not None:
+							chosen_station = pickingStationRB[picking_station_number[iteration]]
+							warehouseBotSim.UpdateObjectPositions()
+							_, _, _, _, _, pickingStationRB = warehouseBotSim.GetDetectedObjects([warehouseObjects.PickingStationMarkers])
+							nav_data = navigation.calculate_goal_velocities(int(math.degrees(chosen_station[1])), None, True)
+							warehouseBotSim.SetTargetVelocities(0.005, -nav_data['rotational_vel'])
+							time.sleep(0.001)
+							print('Honing in... distance: ' + str(round(chosen_station[0],2)))
+						warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+						print('Stopping at 15CM before picking station')
+						time.sleep(1)
+						print('Collecting item...')
+						if warehouseBotSim.CollectItem() is not None:
+							print('Item collected successfully!')
+							item_in_gripper = True
+						else:
+							raise Exception('Item collection failed, aborting!')
+					else:
+						time.sleep(1)
+						print('going to shelf...')
+						state = AwesomeSM.FIND_SHELF
 
-			# Optional: Get camera image for computer vision processing
-			# resolution, image_data = warehouseBotSim.GetCameraImage()
-
-			# Clear screen and show current status
-			if show_debug_info:
-				clear_screen()
-				print("EGB320 Warehouse Robot - Object Detection Status")
-				print("=" * 50)
-				
-				# Display detected objects
-				print_debug_range_bearing("Items", itemsRB)
-				print_debug_range_bearing("Packing Station", packingStationRB)
-				print_debug_range_bearing("Obstacles", obstaclesRB)
-				print_debug_range_bearing("Row Markers", rowMarkerRB)
-				print_debug_range_bearing("Shelves", shelfRB)
-				print_debug_range_bearing("Picking Stations", pickingStationRB)
-				print(warehouseBotSim._get_robot_position())
-				print("=" * 50)
-
-			# Update object positions (required for accurate detection)
-			warehouseBotSim.UpdateObjectPositions()
-
-			if shelfRB[5] is None:
-				# Cannot see the 5th shelf so turn to find it
-				print("Searching for fifth shelf...")
-				while shelfRB[5] is None:
-					warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+				case AwesomeSM.FIND_SHELF:
+					print("Finding shelf...")
 					warehouseBotSim.UpdateObjectPositions()
 					_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
-					time.sleep(0.01)
-				warehouseBotSim.SetTargetVelocities(0.0, 0.0)
-				print("Found! Going to waypoint...")
-			while shelfRB[5][0] > 0.8:
-				warehouseBotSim.UpdateObjectPositions()
-				_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
-				nav_data = navigation.calculate_goal_velocities(int(math.degrees(shelfRB[5][1])))
-				warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
-				time.sleep(0.001)
-			warehouseBotSim.SetTargetVelocities(0.0,0.0)
-			print("Stopping at 50CM before shelf")
-			time.sleep(1)
+
+					chosen_shelf = shelfRB[shelf_number[iteration]]
+					while chosen_shelf is None:
+						warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+						warehouseBotSim.UpdateObjectPositions()
+						_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
+						chosen_shelf = shelfRB[shelf_number[iteration]]
+						time.sleep(0.01)
+					warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+					print("Heading to shelf...")
+					while chosen_shelf[0] > 0.1 and chosen_shelf is not None:
+						chosen_shelf = shelfRB[shelf_number[iteration]]
+						warehouseBotSim.UpdateObjectPositions()
+						_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
+						
+						if iteration == 0:
+							nav_obstacles = []
+							# shelf 1 is an obstacle to naviate around to get to shelf 0
+							dist_to_shelf_obstacle = shelfRB[2][0] if shelfRB[2] is not None else None
+							bearing_to_shelf_obstacle = int(math.degrees(shelfRB[2][1])) if shelfRB[2] is not None else None
+							formatted = Obstacle(
+								distance_to_robot=dist_to_shelf_obstacle,
+								degree = int((CAMERA_FOV / 2) - bearing_to_shelf_obstacle)
+							)
+							nav_obstacles.append(formatted)
+
+						nav_data = navigation.calculate_goal_velocities(int(math.degrees(chosen_shelf[1])), nav_obstacles, True)
+						warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
+						time.sleep(0.001)
+						print('Honing in... distance: ' + str(chosen_shelf[0]))
+					warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+					print("Stopping at 10CM before shelf")
+					time.sleep(1)
+				
+				case AwesomeSM.DEPOSIT_ITEM:
+					print("Depositing item...")
+				
+				case AwesomeSM.RETURN_TO_PICKING_STATION:
+					print("Returning to picking station...")
+					# Show which station index we are moving to
+					print(f"Incrementing station counter: {picking_station_number[iteration]} -> {picking_station_number[(iteration + 1) % len(picking_station_number)]}")
+					iteration = (iteration + 1) % len(picking_station_number)
 
 
-			# localise to known position, the third row marker
-			if rowMarkerRB[2] is None:
-				print("Searching for third row marker...")
-				warehouseBotSim.SetTargetVelocities(0.0, 0.2)
-				while rowMarkerRB[2] is None:
-					print_debug_range_bearing("Row Markers", rowMarkerRB)
-					warehouseBotSim.UpdateObjectPositions()
-					_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
-					time.sleep(0.01)
-				print("Found! Entering...") 
-				warehouseBotSim.SetTargetVelocities(0.0, 0.0)
-
-
-			warehouseBotSim.UpdateObjectPositions()
-			marker_heading = rowMarkerRB[2][1]
-			nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
-			warehouseBotSim.SetTargetVelocities(0.03, -nav_data['rotational_vel'])
-			while rowMarkerRB[2][0] > 0.3:
-				warehouseBotSim.UpdateObjectPositions()
-				_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
-				marker_heading = rowMarkerRB[2][1]
-				nav_data = navigation.calculate_goal_velocities(int(math.degrees(marker_heading)))
-				warehouseBotSim.SetTargetVelocities(0.03, -nav_data['rotational_vel'])
-				time.sleep(0.001)
-			warehouseBotSim.SetTargetVelocities(0.0,0.0)
-			print("Stopping at 10CM before marker")
-			
-
-			# Known distance from third marker, now reverse:
-			warehouseBotSim.driveDistance(-0.85, 0.0)
-			time.sleep(1)
-			warehouseBotSim.driveDistance(0.0, 90.0)
-			time.sleep(1)
-			warehouseBotSim.driveDistance(0.75,0.0)
-			time.sleep(1)
-
-			while pickingStationRB[2] is None:
-				warehouseBotSim.SetTargetVelocities(0.0, 0.2)
-				warehouseBotSim.UpdateObjectPositions()
-				_, _, _, _, _, pickingStationRB = warehouseBotSim.GetDetectedObjects([warehouseObjects.PickingStationMarkers])
-				time.sleep(0.01)
-			warehouseBotSim.SetTargetVelocities(0.0, 0.0)
-
-			break
 	
 
 	except KeyboardInterrupt:

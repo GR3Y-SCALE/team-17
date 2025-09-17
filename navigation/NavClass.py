@@ -6,11 +6,11 @@ import math
 import time
 import matplotlib.pyplot as plt
 
-debug = True
+debug = False
 
 class NavClass:
 
-    def __init__(self, FOV, width=0.16):
+    def __init__(self, FOV, width=0.16, state_machine=None, robot=None):
         self.FOV = FOV
         self.width = width
         self.attractive_field = np.zeros(FOV + 1)
@@ -18,11 +18,17 @@ class NavClass:
 
         self.forward_vel = 0
         self.rot_vel = 0
+        # Optional state machine integration
+        if state_machine is not None:
+            self.state_machine = state_machine
+        elif robot is not None:
+            self.state_machine = sm.StateMachine(robot)
+        else:
+            self.state_machine = None
 
-        self.wicked_sm = sm.State()
-
-    def update(self):
-        self.wicked_sm.update_state()
+    def update(self, event=None):
+        if self.state_machine is not None:
+            self.state_machine.update_state(event)
 
         # compute potential fields from camera view
         # You would likely call calculate_goal_velocities from here
@@ -40,11 +46,17 @@ class NavClass:
     def compute_repulsive_field(self, obstacles):
         min_obstacle_dist = 0.25 # minimum distance to object to consider
         repulsive_field = np.zeros(self.FOV + 1)
+        if obstacles is None or len(obstacles) == 0:
+            return np.zeros(self.FOV + 1)
         for obs in obstacles:
-            obs_dist = obs.distance_to_robot
-            obs_deg = obs.degree
+            if obs is None:
+                continue
+            obs_dist = getattr(obs, 'distance_to_robot', None)
+            obs_deg = getattr(obs, 'degree', None)
+            if obs_dist is None or obs_deg is None:
+                continue
 
-            if obs_dist < min_obstacle_dist:
+            if 0 < obs_dist < min_obstacle_dist:
                 obs_width_rad = 2 * math.atan(self.width / obs_dist)
                 obs_width_deg = int(obs_width_rad * (180 / math.pi))
 
@@ -61,11 +73,11 @@ class NavClass:
         
         return repulsive_field
 
-    def calculate_goal_velocities(self, goal_deg, obstacles=None):
+    def calculate_goal_velocities(self, goal_deg, obstacles=None, debug=False):
         MAX_ROBOT_VEL = 0.05
-        MAX_ROBOT_ROT = 0.05
+        MAX_ROBOT_ROT = 0.07
         GOAL_P = 0.01 # Proportional bias
-        ROTATIONAL_BIAS = 0.01
+        ROTATIONAL_BIAS = 0.05
         CAMERA_FOV = self.FOV # Use the FOV from the class
 
         nav_state = {}
