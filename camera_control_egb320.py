@@ -83,17 +83,13 @@ while True:
         ox, oy, ow, oh = cv2.boundingRect(largest_orange)
         cv2.rectangle(frame, (ox, oy), (ox + ow, oy + oh), (0, 140, 255), 2)
 
-        # REAL_ORANGE_WIDTH = 5.0  # adjust width
-        # if ow > 0:
-        #     distance_orange = (REAL_ORANGE_WIDTH * FOCAL_CONST) / ow
-        #     cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 140, 255), 2)
-        #     print(f"Estimated distance to orange: {distance_orange:.1f} cm")
-    # cv2.imshow("Orange Mask", orange_mask)
-    # cv2.imshow("Blue Mask", blue_mask)
-    # cv2.imshow("Yellow Mask", yellow_mask)
-    # cv2.imshow("Green Mask", green_mask)
-    # cv2.imshow("Combined Mask", combined_mask)
+        REAL_ORANGE_WIDTH = 5.0  # adjust width
+        if ow > 0:
+            distance_orange = (REAL_ORANGE_WIDTH * FOCAL_CONST) / ow
+            cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 140, 255), 2)
+            print(f"Estimated distance to orange: {distance_orange:.1f} cm")
+ 
     # Green Colour Tracking - Person
     green_contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if green_contours:
@@ -101,12 +97,12 @@ while True:
         gx, gy, gw, gh = cv2.boundingRect(largest_green)
         cv2.rectangle(frame, (gx, gy), (gx + gw, gy + gh), (0, 255, 0), 2)
 
-        # REAL_GREEN_WIDTH = 6.0  # adjust width
-        # if gw > 0:
-        #     distance_green = (REAL_GREEN_WIDTH * FOCAL_CONST) / gw
-        #     cv2.putText(frame, f"{distance_green:.1f}cm", (gx, gy - 10),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        #     print(f"Estimated distance to green: {distance_green:.1f} cm")
+        REAL_GREEN_WIDTH = 6.0  # adjust width
+        if gw > 0:
+            distance_green = (REAL_GREEN_WIDTH * FOCAL_CONST) / gw
+            cv2.putText(frame, f"{distance_green:.1f}cm", (gx, gy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            print(f"Estimated distance to green: {distance_green:.1f} cm")
 
     # Blue Colour Tracking - Shelf Angle
     blue_contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -132,11 +128,23 @@ while True:
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
         for cnt in black_contours:
             approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
-            # print(len(approx))
-            # if len(approx) == 1:
-            #     print("Circle")
-            # else:
-            #     print("Square")
+            print(len(approx))
+            if len(approx) == 1:
+                shape = "Circle"
+                print("Circle")
+            else:
+                shape = "Square"
+                print("Square")
+            cv2.drawContours(frame, approx, 0, (255, 255, 255), 2)
+            x, y = approx[0][0]
+            cv2.putText(frame, shape, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 2)
+
+        REAL_BLACK_WIDTH = 4.0  # adjust width
+        if bw > 0:
+            distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
+            cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            print(f"Estimated distance to green: {distance_black:.1f} cm")
 
 #############################################
 
