@@ -20,14 +20,7 @@ while True:
     ## Colour Spaces ##
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 		# Convert from BGR to HSV colourspace
 
-    # Colour Tracker
-    # box_w, box_h = 5,5
-    # middle_x, middle_y = hsv_frame.shape[1] // 2, hsv_frame.shape[0] // 2
-    # top_left = (middle_x - box_w // 2, middle_y - box_h // 2)
-    # bottom_right = (middle_x + box_w // 2, middle_y + box_h // 2)
-    # middle_hsv = hsv_frame[middle_x, middle_y]
-    # cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
-    # print(f"HSV at middle ({middle_x}, {middle_y}): {middle_hsv}")
+    ###### May need to include blur to soften shapes ######
 
     ## Orange - Item ##
     lower_orange = (10, 230, 170)       # Lower bound for orange in HSV
@@ -83,7 +76,20 @@ while True:
         ox, oy, ow, oh = cv2.boundingRect(largest_orange)
         cv2.rectangle(frame, (ox, oy), (ox + ow, oy + oh), (0, 140, 255), 2)
 
-        REAL_ORANGE_WIDTH = 6.0  # adjust width
+        # Orange Angle
+        for cnt in orange_contours:
+            M = cv2.moments(cnt)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                # Calculate pixel offset from center
+                frame_center_x = frame.shape[1] // 2
+                offset_px = cx - frame_center_x
+                angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
+                cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, oy - 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 140, 255), 2)
+
+        # Orange Distance
+        REAL_ORANGE_WIDTH = 5.0  # adjust width
         if ow > 0:
             distance_orange = (REAL_ORANGE_WIDTH * FOCAL_CONST) / ow
             cv2.putText(frame, f"{distance_orange:.1f}cm", (ox, oy - 10),
@@ -97,6 +103,18 @@ while True:
         gx, gy, gw, gh = cv2.boundingRect(largest_green)
         cv2.rectangle(frame, (gx, gy), (gx + gw, gy + gh), (0, 255, 0), 2)
 
+        # Green Angle
+        for cnt in green_contours:
+            M = cv2.moments(cnt)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                frame_center_x = frame.shape[1] // 2
+                offset_px = cx - frame_center_x
+                angle_deg = (offset_px / frame.shape[1]) * 66
+                cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, gy - 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Green Distance
         REAL_GREEN_WIDTH = 6.0  # adjust width
         if gw > 0:
             distance_green = (REAL_GREEN_WIDTH * FOCAL_CONST) / gw
@@ -112,14 +130,14 @@ while True:
         cv2.rectangle(frame, (ux, uy), (ux + uw, uy + uh), (255, 0, 0), 2)
 
         # Find center of bounding box
-        #shelf_center_x = bx + bw // 2
-        #frame_center_x = frame.shape[1] // 2
-        #offset_px = shelf_center_x - frame_center_x
+        shelf_center_x = ux + uw // 2
+        frame_center_x = frame.shape[1] // 2
+        offset_px = shelf_center_x - frame_center_x
         # Estimate angle (in degrees) using FOV and pixel offset
-        #angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
-        #cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (bx, by - 10),
-         #           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-        #print(f"Shelf angle: {angle_deg:.1f} degrees")
+        angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
+        cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (ux, uy - 10),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        print(f"Shelf angle: {angle_deg:.1f} degrees")
 
         black_contours, _ = cv2.findContours(black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if black_contours:
@@ -135,16 +153,27 @@ while True:
             # else:
             #     shape = "Square"
             #     print("Square")
-            # cv2.drawContours(frame, approx, 0, (255, 255, 255), 2)
+            # cv2.drawContours(frame, approx, 0, (0, 0, 0), 2)
             # x, y = approx[0][0]
-            # cv2.putText(frame, shape, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 2)
+            # cv2.putText(frame, shape, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 2)
 
-            REAL_BLACK_WIDTH = 4.0  # adjust width
+            # Black Angle
+            M = cv2.moments(cnt)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                frame_center_x = frame.shape[1] // 2
+                offset_px = cx - frame_center_x
+                angle_deg = (offset_px / frame.shape[1]) * 66
+                cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+
+            # Black Distance
+            REAL_BLACK_WIDTH = 5.0  # adjust width
             if bw > 0:
                 distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
                 cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                # print(f"Estimated distance to black: {distance_black:.1f} cm")
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                print(f"Estimated distance to black: {distance_black:.1f} cm")
 
 #############################################
 
