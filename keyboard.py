@@ -7,11 +7,15 @@ import os, sys, tty, termios, signal
 from DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
 
 # ── Board setup ────────────────────────────────────────────────────────────
-board = Board(1 if THIS_BOARD_TYPE else 7, 0x10)
+# board = Board(1 if THIS_BOARD_TYPE else 7, 0x10)   # original line
+board = Board(1, 0x10)  # force Raspberry Pi to use I²C bus 1
 while board.begin() != board.STA_OK:
     pass                     # wait until the board replies
 FWD, REV = board.CW, board.CCW
-SPEED = 100                  # duty‑cycle percentage
+
+SPEED_FAST = 90
+SPEED_SLOW = 60
+current_speed = SPEED_FAST                 # duty‑cycle percentage
 
 # ── Tiny helpers ───────────────────────────────────────────────────────────
 def set_motor(motor, value: int):
@@ -38,14 +42,38 @@ def main():
     tty.setraw(sys.stdin.fileno())
 
     signal.signal(signal.SIGINT, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt))
+    # VERY IMPORTANT INITIALISATION
+    board.set_encoder_enable(board.ALL)
+    board.set_encoder_reduction_ratio(board.ALL, 100)
+    board.set_moter_pwm_frequency(1000)
+
+    global current_speed  # we'll change this inside the loop
 
     try:
         while True:
             k = read_key()
-            if   k == "w":  set_motor(board.M1,  SPEED); set_motor(board.M2,  SPEED)
-            elif k == "s":  set_motor(board.M1, -SPEED); set_motor(board.M2, -SPEED)
-            elif k == "a":  set_motor(board.M1,     0);  set_motor(board.M2,  SPEED)
-            elif k == "d":  set_motor(board.M1,  SPEED); set_motor(board.M2,     0)
+
+            # --- NEW: speed presets ---
+            if   k == "f":  # fast
+                current_speed = SPEED_FAST
+                print("Speed set to FAST =", current_speed)
+                continue
+            elif k == "g":  # gentle
+                current_speed = SPEED_SLOW
+                print("Speed set to GENTLE =", current_speed)
+                continue
+
+            # --- ORIGINAL drive lines (commented) ---
+            # if   k == "w":  set_motor(board.M1,  SPEED); set_motor(board.M2,  -SPEED)
+            # elif k == "s":  set_motor(board.M1, -SPEED); set_motor(board.M2,  SPEED)
+            # elif k == "a":  set_motor(board.M1,     0);  set_motor(board.M2,  -SPEED)
+            # elif k == "d":  set_motor(board.M1,  SPEED); set_motor(board.M2,     0)
+
+            # --- NEW: use current_speed instead of SPEED ---
+            if   k == "w":  set_motor(board.M1,  current_speed); set_motor(board.M2, -current_speed)
+            elif k == "s":  set_motor(board.M1, -current_speed); set_motor(board.M2,  current_speed)
+            elif k == "a":  set_motor(board.M1,               0); set_motor(board.M2, -current_speed)
+            elif k == "d":  set_motor(board.M1,  current_speed); set_motor(board.M2,               0)
             elif k == " ":  stop_all()
             elif k in {"x", "quit"}:
                 break
@@ -55,5 +83,7 @@ def main():
         stop_all()
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old)
 
+
 if __name__ == "__main__":
     main()
+
