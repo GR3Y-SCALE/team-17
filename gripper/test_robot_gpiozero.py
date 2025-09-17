@@ -1,5 +1,5 @@
 import time
-import my_servo_module as servo
+import my_servo_module_gpiozero as servo
 
 print("=== TEST START ===")
 
