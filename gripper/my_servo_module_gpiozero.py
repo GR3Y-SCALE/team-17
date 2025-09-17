@@ -31,8 +31,8 @@ def angle_to_ratio(angle):
 # Gripper positions (replace with measured angles)
 # -------------------------
 GRIPPER_POSITIONS = {
-    "open": 20,    # temporary value
-    "closed": 120  # temporary value
+    "open": 0.001,    # temporary value
+    "closed": 0.001  # temporary value
 }
 
 def open_gripper():
@@ -70,7 +70,7 @@ def move_to(position):
     for i in range(steps + 1):
         ratio = start_ratio + (end_ratio - start_ratio) * i / steps
         lift.value = ratio
-        sleep(0.1)  # adjust speed here
+        sleep(0.001)  # adjust speed here
     current_lift_angle = target_angle
 
 # -------------------------
