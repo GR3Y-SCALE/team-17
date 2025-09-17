@@ -1,72 +1,44 @@
-import pigpio
-import time
+from gpiozero import Servo
+from time import sleep
 
 # -------------------------
 # Setup
 # -------------------------
-pi = pigpio.pi()
-if not pi.connected:
-    raise RuntimeError("Cannot connect to pigpiod. Did you start it?")
+GRIPPER_SERVO_PIN = 18  # GPIO for gripper
+LIFT_SERVO_PIN    = 19  # GPIO for lift arm
 
-GRIPPER_SERVO = 12    # Ask moss for the correct gpio pin should be these mabeyor gpio 18 gpio 19
-LIFT_SERVO    = 13    # GPIO pin for lift arm
+gripper = Servo(GRIPPER_SERVO_PIN)
+lift = Servo(LIFT_SERVO_PIN)
 
 # -------------------------
-# Helper: angle -> pulsewidth
+# Mapping helper (-1 to 1)
 # -------------------------
-def set_servo_angle(gpio, angle):
-    """Directly set servo to angle (0–180)."""
-    pulse = 500 + (angle / 180.0) * 2000
-    pi.set_servo_pulsewidth(gpio, pulse)
-
-def smooth_move(gpio, start, end):
+def angle_to_ratio(angle):
     """
-    Smoothly move a servo from start to end angle (~4.5 s for 180°).
+    Map 0-180 degrees to -1 to 1 for gpiozero Servo
     """
-    step = 1
-    delay = 0.025  # slower, smooth movement
-
-    if start < end:
-        rng = range(start, end + 1, step)
-    else:
-        rng = range(start, end - 1, -step)
-
-    for angle in rng:
-        set_servo_angle(gpio, angle)
-        time.sleep(delay)
+    return (angle / 90.0) - 1  # 0° -> -1, 90° -> 0, 180° -> 1
 
 # -------------------------
-# Gripper positions (Servo 1)
-# Replace XXXX with measured angles
+# Gripper positions
 # -------------------------
 GRIPPER_POSITIONS = {
-    "open": XXXX,
-    "closed": XXXX
+    "open": XXXX,    # degrees
+    "closed": XXXX   # degrees
 }
 
 def open_gripper():
-    """Open the gripper smoothly."""
-    smooth_move(GRIPPER_SERVO, GRIPPER_POSITIONS["closed"], GRIPPER_POSITIONS["open"])
+    ratio = angle_to_ratio(GRIPPER_POSITIONS["open"])
+    gripper.value = ratio
+    sleep(1)  # wait for servo to move
 
 def close_gripper_timed(duration=3):
-    """
-    Close the gripper toward the closed angle for a fixed time (seconds),
-    then stop the servo.
-    """
-    target_angle = GRIPPER_POSITIONS["closed"]
-    
-    # Move toward closed smoothly
-    smooth_move(GRIPPER_SERVO, GRIPPER_POSITIONS["open"], target_angle)
-    
-    # Hold position for the duration
-    time.sleep(duration)
-    
-    # Stop sending PWM (servo holds last position)
-    pi.set_servo_pulsewidth(GRIPPER_SERVO, 0)
+    ratio = angle_to_ratio(GRIPPER_POSITIONS["closed"])
+    gripper.value = ratio
+    sleep(duration)
 
 # -------------------------
-# Lift positions (Servo 2)
-# Replace XXXX with measured angles
+# Lift positions
 # -------------------------
 LIFT_POSITIONS = {
     "bottom_shelf": XXXX,
@@ -74,23 +46,28 @@ LIFT_POSITIONS = {
     "top_shelf": XXXX
 }
 
-current_lift_angle = 90  # initial guess, update after first move
+current_lift_angle = 90  # starting guess
 
 def move_to(position):
-    """Move lift arm to one of three preset positions smoothly."""
     global current_lift_angle
     if position not in LIFT_POSITIONS:
-        raise ValueError(f"Invalid position '{position}'. Choose from {list(LIFT_POSITIONS.keys())}")
-
+        raise ValueError(f"Invalid position '{position}'")
+    
     target_angle = LIFT_POSITIONS[position]
-    smooth_move(LIFT_SERVO, current_lift_angle, target_angle)
+    
+    # Smooth move (simple incremental)
+    steps = 20
+    start_ratio = angle_to_ratio(current_lift_angle)
+    end_ratio = angle_to_ratio(target_angle)
+    for i in range(steps + 1):
+        ratio = start_ratio + (end_ratio - start_ratio) * i / steps
+        lift.value = ratio
+        sleep(0.05)  # adjust speed
     current_lift_angle = target_angle
 
 # -------------------------
-# Cleanup
+# Stop servos (set to neutral)
 # -------------------------
 def stop_servos():
-    """Stop sending PWM signals and release resources."""
-    pi.set_servo_pulsewidth(GRIPPER_SERVO, 0)
-    pi.set_servo_pulsewidth(LIFT_SERVO, 0)
-    pi.stop()
+    gripper.detach()
+    lift.detach()

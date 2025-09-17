@@ -1,34 +1,34 @@
 import time
-import my_servo_module.py as servo   # import your servo code
+import my_servo_module as servo
 
 print("=== TEST START ===")
 
-# Test the gripper
+# Test gripper
 print("Opening gripper...")
 servo.open_gripper()
-time.sleep(2)
+time.sleep(1)
 
 print("Closing gripper for 3 seconds...")
 servo.close_gripper_timed(3)
-time.sleep(2)
+time.sleep(1)
 
-# Test the lift arm
+# Test lift arm
 print("Moving lift to bottom shelf...")
 servo.move_to("bottom_shelf")
-time.sleep(2)
+time.sleep(1)
 
 print("Moving lift to middle shelf...")
 servo.move_to("middle_shelf")
-time.sleep(2)
+time.sleep(1)
 
 print("Moving lift to top shelf...")
 servo.move_to("top_shelf")
-time.sleep(2)
+time.sleep(1)
 
-print("Returning lift to bottom shelf...")
+# Return lift to bottom
 servo.move_to("bottom_shelf")
-time.sleep(2)
+time.sleep(1)
 
-# Stop everything safely
+# Stop everything
 servo.stop_servos()
 print("=== TEST COMPLETE ===")
