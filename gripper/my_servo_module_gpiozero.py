@@ -30,28 +30,28 @@ def angle_to_ratio(angle):
 # -------------------------
 # Gripper positions (replace with measured angles)
 # -------------------------
-GRIPPER_POSITIONS = {
-    "open": 0.001,    # temporary value
-    "closed": 0.001  # temporary value
-}
+# GRIPPER_POSITIONS = {
+#     "open": 0.0005,    # temporary value
+#     "closed": 0.0025  # temporary value
+# }
 
-def open_gripper():
-    ratio = angle_to_ratio(GRIPPER_POSITIONS["open"])
-    gripper.value = ratio
-    sleep(1)
+# def open_gripper():
+#     ratio = angle_to_ratio(GRIPPER_POSITIONS["open"])
+#     gripper.value = ratio
+#     sleep(1)
 
-def close_gripper_timed(duration=3):
-    ratio = angle_to_ratio(GRIPPER_POSITIONS["closed"])
-    gripper.value = ratio
-    sleep(duration)
+# def close_gripper_timed(duration=3):
+#     ratio = angle_to_ratio(GRIPPER_POSITIONS["closed"])
+#     gripper.value = ratio
+#     sleep(duration)
 
 # -------------------------
 # Lift positions (replace with measured angles)
 # -------------------------
 LIFT_POSITIONS = {
-    "bottom_shelf": 0,
+    "bottom_shelf": 30,
     "middle_shelf": 90,
-    "top_shelf": 180
+    "top_shelf": 120
 }
 
 current_lift_angle = 90  # starting guess
