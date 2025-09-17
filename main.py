@@ -10,7 +10,7 @@ robot = DriveSystem()
 def main():
 
     try:
-        robot.set_target_velocities(0.1, 0.0)
+        robot.turn_degrees(90, 180)
         while True:
             print(robot.get_wheel_speeds())
             time.sleep(0.1)
