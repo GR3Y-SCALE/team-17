@@ -8,8 +8,15 @@ nav = NavClass(FOV=180, width=0.16)
 robot = DriveSystem()
 
 def main():
-    print(robot.get_wheel_speeds())
-    time.sleep(1)
+
+    try:
+        robot.set_target_velocities(0.1, 0.0)
+        while True:
+            print(robot.get_wheel_speeds())
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exiting")
+        robot.stop_all()
 
 
 

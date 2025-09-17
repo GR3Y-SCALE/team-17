@@ -163,7 +163,7 @@ class DFRobot_DC_Motor:
       l.append(s)
     return l
 
-  def set_moter_pwm_frequency(self, frequency):
+  def set_motor_pwm_frequency(self, frequency):
     '''!
       @brief Set dc motor pwm frequency
       @param frequency    Frequency to set, in range 100HZ to 12750HZ, otherwise no effective (actual frequency) = frequency - (frequency % 50)

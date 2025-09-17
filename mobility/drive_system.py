@@ -1,6 +1,6 @@
 import os, sys, time, math, threading
 from typing import Tuple, Optional
-from DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
+from mobility.DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
 
 
 class DriveSystem:
@@ -15,11 +15,11 @@ class DriveSystem:
                  wheel_radius_m: float = 0.070,
                  track_width_m: float = 0.155,
                  control_hz: float = 25.0,
-                 kp: float = 0.8,
-                 ki: float = 0.2,
-                 kd: float = 0.0,
+                 kp: float = 1.3,
+                 ki: float = 0.7,
+                 kd: float = 0.02,
                  invert_left: bool = False,
-                 invert_right: bool = False,
+                 invert_right: bool = True,
                  max_angular_rps: float = 1.0,
                  encoder_reduction_ratio: int = 100):
         """
@@ -130,8 +130,7 @@ class DriveSystem:
             A tuple containing the left and right wheel speeds in meters per second.
         """
         # --- FIX: The get_encoder_speed() method must be called for each motor individually ---
-        rpm_l = float(self.board.get_encoder_speed(self.board.M1))
-        rpm_r = float(self.board.get_encoder_speed(self.board.M2))
+        rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
         
         v_l = self._rpm_to_mps(rpm_l)
         v_r = self._rpm_to_mps(rpm_r)
@@ -159,8 +158,13 @@ class DriveSystem:
                 t0 = time.time()
                 
                 # --- FIX: Must read each encoder speed with a separate call ---
-                rpm_l_meas = float(self.board.get_encoder_speed(self.board.M1))
-                rpm_r_meas = float(self.board.get_encoder_speed(self.board.M2))
+                rpm_l_meas,rpm_r_meas = self.board.get_encoder_speed(self.board.ALL)
+                
+
+                # if self.invert_left:
+                #     rpm_l_meas = rpm_l_meas * -1
+                # if self.invert_rightt:
+                #     rpm_r_meas = rpm_r_meas * -1
 
                 with self._lock:
                     rpm_l_target = self._target_rpm_l
@@ -168,7 +172,7 @@ class DriveSystem:
 
                 # --- REFACTOR: PID logic is now clearer and more direct ---
                 # Left Motor PID Calculation
-                err_l = rpm_l_target - rpm_l_meas
+                err_l = rpm_l_target - abs(rpm_l_meas)
                 self._integral_l += err_l * self.dt
                 self._integral_l = max(min(self._integral_l, 200.0), -200.0) # Integral clamping
                 deriv_l = (err_l - self._prev_err_l) / self.dt
@@ -176,7 +180,7 @@ class DriveSystem:
                 self._prev_err_l = err_l
                 
                 # Right Motor PID Calculation
-                err_r = rpm_r_target - rpm_r_meas
+                err_r = rpm_r_target - abs(rpm_r_meas)
                 self._integral_r += err_r * self.dt
                 self._integral_r = max(min(self._integral_r, 200.0), -200.0) # Integral clamping
                 deriv_r = (err_r - self._prev_err_r) / self.dt
