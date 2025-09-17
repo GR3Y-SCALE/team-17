@@ -49,14 +49,10 @@ class NavClass:
         if obstacles is None or len(obstacles) == 0:
             return np.zeros(self.FOV + 1)
         for obs in obstacles:
-            if obs is None:
-                continue
-            obs_dist = getattr(obs, 'distance_to_robot', None)
-            obs_deg = getattr(obs, 'degree', None)
-            if obs_dist is None or obs_deg is None:
-                continue
+            obs_dist = obs.distance_to_robot
+            obs_deg = obs.degree
 
-            if 0 < obs_dist < min_obstacle_dist:
+            if obs_dist < min_obstacle_dist:
                 obs_width_rad = 2 * math.atan(self.width / obs_dist)
                 obs_width_deg = int(obs_width_rad * (180 / math.pi))
 
@@ -75,7 +71,7 @@ class NavClass:
 
     def calculate_goal_velocities(self, goal_deg, obstacles=None, debug=False):
         MAX_ROBOT_VEL = 0.05
-        MAX_ROBOT_ROT = 0.07
+        MAX_ROBOT_ROT = 0.075
         GOAL_P = 0.01 # Proportional bias
         ROTATIONAL_BIAS = 0.05
         CAMERA_FOV = self.FOV # Use the FOV from the class

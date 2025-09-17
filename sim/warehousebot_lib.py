@@ -518,7 +518,7 @@ class COPPELIA_WarehouseRobot(object):
 		elif self.robotParameters.driveType == 'holonomic':
 			print('Holonomic drive not yet implemented')
 
-	def driveDistance(self, dist, rot_degrees):
+	def driveDistance(self,dist_x,dist_y,rot_degrees):
 		"""
 		Drive a specified distance and/or rotate by an angle, then stop.
 		- Distance in meters (forward +, backward -)
@@ -527,11 +527,10 @@ class COPPELIA_WarehouseRobot(object):
 		Blocks until the maneuver completes or a safety timeout occurs.
 		"""
 		# Early exit if nothing to do
-		if (dist is None or rot_degrees is None):
+		if (dist_x is None or rot_degrees is None or dist_y is None):
+			raise ValueError("driveDistance requires dist_x, dist_y, and rot_degrees parameters")
+		if dist_x == 0 and rot_degrees == 0 and dist_y == 0:
 			return
-		if dist == 0 and rot_degrees == 0:
-			return
-
 		start_pose = self._get_robot_position()
 		if start_pose is None:
 			print("Error: Unable to get robot position for driveDistance")
@@ -553,21 +552,33 @@ class COPPELIA_WarehouseRobot(object):
 				time.sleep(dt_sleep)
 			print(f"Rotation complete, currently: {math.degrees(self._get_robot_position()[2]):.1f} deg")
 		
-		if dist != 0:
+		if dist_x != 0:
 			drive_start_time = time.time()
-			target_distance = start_pose[0] + dist if dist > 0 else -dist
-			print(f"Driving {'forward' if dist > 0 else 'backward'} {dist:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
-			self.SetTargetVelocities(max_forward_vel if dist > 0 else -max_forward_vel, 0.0)
-			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[0] - target_distance) > 0.001:
+			print(start_pose[0])
+			target_distance = start_pose[0] + dist_x #if abs(dist) > 0 else -dist
+			print(f"Driving {'forward' if dist_x > 0 else 'backward'} {dist_x:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
+			self.SetTargetVelocities(max_forward_vel if dist_x > 0 else -max_forward_vel, 0.0)
+			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[0] - target_distance) > 0.0001:
 				self.UpdateObjectPositions()
 				time.sleep(dt_sleep)
 			print(f"Drive complete, currently: {self._get_robot_position()[0]:.2f} m")
+
+		if dist_y != 0:
+			drive_start_time = time.time()
+			print(start_pose[0])
+			target_distance = start_pose[1] + dist_y #if abs(dist) > 0 else -dist
+			print(f"Driving {'forward' if dist_y > 0 else 'backward'} {dist_y:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
+			self.SetTargetVelocities(max_forward_vel if dist_y > 0 else -max_forward_vel, 0.0)
+			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[1] - target_distance) > 0.0001:
+				self.UpdateObjectPositions()
+				time.sleep(dt_sleep)
+			print(f"Drive complete, currently: {self._get_robot_position()[1]:.2f} m")
 
 
 		# 3) Cleanup: ensure full stop
 		self.SetTargetVelocities(0.0, 0.0)
 		time.sleep(0.02)
-		print(f"Drive complete: {dist:.2f} m, {rot_degrees:.1f} deg")
+		print(f"Drive complete: {dist_x:.2f} x, {dist_y:.2f} y, {rot_degrees:.1f} deg")
 
 
 	def itemCollected(self):
@@ -1730,8 +1741,8 @@ class RobotParameters(object):
 		self.driveSystemQuality = 1.0   # quality from 0 to 1 (1 = perfect)
 		
 		# Wheel Parameters (set automatically for differential drive)
-		self.wheelBase = 0.15           # distance between wheels in m
-		self.wheelRadius = 0.03         # wheel radius in m
+		self.wheelBase = 0.1           # distance between wheels in m
+		self.wheelRadius = 0.03081         # wheel radius in m
 		
 		# Camera Parameters
 		self.cameraOrientation = 'landscape'  # 'landscape' or 'portrait'

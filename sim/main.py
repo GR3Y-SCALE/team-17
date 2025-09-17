@@ -188,7 +188,7 @@ if __name__ == '__main__':
 		time.sleep(1)
 		warehouseBotSim.driveDistance(0.0, 0.0, 90.0)
 		time.sleep(1)
-		warehouseBotSim.driveDistance(0.0, 0.45, 0.0)
+		warehouseBotSim.driveDistance(0.0, 0.4, 0.0)
 		time.sleep(1)
 		warehouseBotSim.SetTargetVelocities(0.0, 0.0)
 
@@ -208,6 +208,7 @@ if __name__ == '__main__':
 			RETURN_TO_PICKING_STATION = auto()
 		state = AwesomeSM.COLLECT_ITEM
 		item_in_gripper = False
+		depositing = False
 
 		# order to visit picking stations (use list, not set; sets are unordered/non-indexable)
 		picking_station_number = [0, 1, 2]
@@ -273,29 +274,52 @@ if __name__ == '__main__':
 						time.sleep(0.01)
 					warehouseBotSim.SetTargetVelocities(0.0, 0.0)
 					print("Heading to shelf...")
-					while chosen_shelf[0] > 0.1 and chosen_shelf is not None:
+					while chosen_shelf[0] > 0.5 and chosen_shelf is not None:
 						chosen_shelf = shelfRB[shelf_number[iteration]]
 						warehouseBotSim.UpdateObjectPositions()
 						_, _, _, _, shelfRB, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.shelves])
 						
-						if iteration == 0:
-							nav_obstacles = []
-							# shelf 1 is an obstacle to naviate around to get to shelf 0
-							dist_to_shelf_obstacle = shelfRB[2][0] if shelfRB[2] is not None else None
-							bearing_to_shelf_obstacle = int(math.degrees(shelfRB[2][1])) if shelfRB[2] is not None else None
-							formatted = Obstacle(
-								distance_to_robot=dist_to_shelf_obstacle,
-								degree = int((CAMERA_FOV / 2) - bearing_to_shelf_obstacle)
-							)
-							nav_obstacles.append(formatted)
+						# if iteration == 0:
+						# 	nav_obstacles = []
+						# 	# shelf 1 is an obstacle to naviate around to get to shelf 0
+						# 	if shelfRB[2] is not None:
+						# 		dist_to_shelf_obstacle = shelfRB[2][0]
+						# 		bearing_to_shelf_obstacle = int(math.degrees(shelfRB[2][1]))
+						# 		formatted = Obstacle(
+						# 			distance_to_robot=dist_to_shelf_obstacle,
+						# 			degree = int((CAMERA_FOV / 2) - bearing_to_shelf_obstacle)
+						# 		)
+						# 		nav_obstacles.append(formatted)
 
-						nav_data = navigation.calculate_goal_velocities(int(math.degrees(chosen_shelf[1])), nav_obstacles, True)
+						nav_data = navigation.calculate_goal_velocities(int(math.degrees(chosen_shelf[1])), None, True)
 						warehouseBotSim.SetTargetVelocities(0.01, -nav_data['rotational_vel'])
 						time.sleep(0.001)
 						print('Honing in... distance: ' + str(chosen_shelf[0]))
 					warehouseBotSim.SetTargetVelocities(0.0, 0.0)
 					print("Stopping at 10CM before shelf")
 					time.sleep(1)
+					while item_in_gripper == True:
+						print("Going to marker to line up with shelf...")
+						warehouseBotSim.UpdateObjectPositions
+						_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+						time.sleep(0.01)
+						if rowMarkerRB is None:
+							warehouseBotSim.SetTargetVelocities(0.0, -0.2)
+							warehouseBotSim.UpdateObjectPositions
+							_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+							time.sleep(0.01)
+						warehouseBotSim.SetTargetVelocities(0.0, 0.0)
+						warehouseBotSim.SetTargetVelocities(0.0, 0.2)
+
+						while rowMarkerRB is not None and rowMarkerRB[iteration][0] > 0.5:
+							warehouseBotSim.UpdateObjectPositions
+							_, _, _, rowMarkerRB, _, _ = warehouseBotSim.GetDetectedObjects([warehouseObjects.row_markers])
+							nav_data = navigation.calculate_goal_velocities(int(math.degrees(rowMarkerRB[iteration][1])), None, True)
+							warehouseBotSim.SetTargetVelocities(0.01, -nav_data["rotational_vel"])
+							time.sleep(0.001)
+						# warehouseBotSim.driveDistance(0.0,0.0 -90.0)
+							
+
 				
 				case AwesomeSM.DEPOSIT_ITEM:
 					print("Depositing item...")
