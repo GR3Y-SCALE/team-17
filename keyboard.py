@@ -13,8 +13,8 @@ while board.begin() != board.STA_OK:
     pass                     # wait until the board replies
 FWD, REV = board.CW, board.CCW
 
-SPEED_FAST = 90
-SPEED_SLOW = 60
+SPEED_FAST = 100
+SPEED_SLOW = 30
 current_speed = SPEED_FAST                 # duty‑cycle percentage
 
 # ── Tiny helpers ───────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ def main():
     board.set_encoder_reduction_ratio(board.ALL, 100)
     board.set_moter_pwm_frequency(1000)
 
-    global current_speed  # we'll change this inside the loop
+    global current_speed  # will change this inside the loop
 
     try:
         while True:
@@ -62,12 +62,6 @@ def main():
                 current_speed = SPEED_SLOW
                 print("Speed set to GENTLE =", current_speed)
                 continue
-
-            # --- ORIGINAL drive lines (commented) ---
-            # if   k == "w":  set_motor(board.M1,  SPEED); set_motor(board.M2,  -SPEED)
-            # elif k == "s":  set_motor(board.M1, -SPEED); set_motor(board.M2,  SPEED)
-            # elif k == "a":  set_motor(board.M1,     0);  set_motor(board.M2,  -SPEED)
-            # elif k == "d":  set_motor(board.M1,  SPEED); set_motor(board.M2,     0)
 
             # --- NEW: use current_speed instead of SPEED ---
             if   k == "w":  set_motor(board.M1,  current_speed); set_motor(board.M2, -current_speed)
