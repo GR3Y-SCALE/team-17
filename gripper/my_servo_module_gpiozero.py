@@ -1,85 +1,25 @@
 from gpiozero import Servo
 from time import sleep
+import numpy as np
 
-# -------------------------
-# Safe cleanup first
-# -------------------------
+# FS90R on GPIO19
+servo = Servo(19, min_pulse_width=0.0010, max_pulse_width=0.0020)
+
+# Create smooth sweep values between -0.3 and +0.3
+sweep_values = np.linspace(-0.3, 0.3, 30)  # 30 steps for smooth motion
+
 try:
-    Device.pin_factory.close()
-except:
-    pass  # ignore if nothing to close
+    while True:
+        # Sweep left to right
+        for val in sweep_values:
+            servo.value = val
+            sleep(0.05)  # adjust speed: smaller = slower
 
-# -------------------------
-# GPIO Pins
-# -------------------------
-GRIPPER_SERVO_PIN = 18  # GPIO for gripper
-LIFT_SERVO_PIN    = 19  # GPIO for lift arm
+        # Sweep right to left
+        for val in reversed(sweep_values):
+            servo.value = val
+            sleep(0.05)
 
-# -------------------------
-# Initialize servos
-# -------------------------
-gripper = Servo(GRIPPER_SERVO_PIN)
-lift = Servo(LIFT_SERVO_PIN)
-
-# -------------------------
-# Helper: map 0-180° to -1..1
-# -------------------------
-def angle_to_ratio(angle):
-    return (angle / 90.0) - 1  # 0° -> -1, 90° -> 0, 180° -> 1
-
-# -------------------------
-# Gripper positions (replace with measured angles)
-# -------------------------
-GRIPPER_POSITIONS = {
-    "open": 0,    # temporary value
-    "closed": 90  # temporary value
-}
-
-def open_gripper():
-    ratio = angle_to_ratio(GRIPPER_POSITIONS["open"])
-    gripper.value = ratio
-    sleep(1)
-
-def close_gripper_timed(duration=3):
-    ratio = angle_to_ratio(GRIPPER_POSITIONS["closed"])
-    gripper.value = ratio
-    sleep(duration)
-
-# -------------------------
-# Lift positions (replace with measured angles)
-# -------------------------
-LIFT_POSITIONS = {
-    "bottom_shelf": 0,
-    "middle_shelf": 90,
-    "top_shelf": 180
-}
-
-current_lift_angle = 90  # starting guess
-
-def move_to(position):
-    global current_lift_angle
-    if position not in LIFT_POSITIONS:
-        raise ValueError(f"Invalid position '{position}'")
-    
-    target_angle = LIFT_POSITIONS[position]
-
-    # Smooth move
-    steps = 20
-    start_ratio = angle_to_ratio(current_lift_angle)
-    end_ratio = angle_to_ratio(target_angle)
-    for i in range(steps + 1):
-        ratio = start_ratio + (end_ratio - start_ratio) * i / steps
-        lift.value = ratio
-        sleep(0.05)  # adjust speed here
-    current_lift_angle = target_angle
-
-# -------------------------
-# Stop servos safely
-# -------------------------
-def stop_servos():
-    gripper.detach()
-    lift.detach()
-    try:
-        Device.pin_factory.close()
-    except:
-        pass
+except KeyboardInterrupt:
+    servo.mid()  # stop servo on exit
+    print("Stopped cleanly")
