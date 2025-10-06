@@ -1,19 +1,21 @@
 import time
 import cv2
-import picamera2
+# import picamera2
 import numpy as np
 import math
 
 ## Camera Object ##
-cap = picamera2.Picamera2()
-config = cap.create_video_configuration(main={"format":'XRGB8888',"size":(820,616)})
-cap.configure(config)
-cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,2.0)})
-cap.start()
+# cap = picamera2.Picamera2() now using 120 USB camera
+frame_cap = cv2.VideoCapture(0)
+# config = cap.create_video_configuration(main={"format":'XRGB8888',"size":(820,616)})
+# cap.configure(config)
+# cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,2.0)})
+# cap.start()
 
 while True:
     ## Displaying Frames ##
-    frame = cap.capture_array()
+    # frame = cap.capture_array()
+    frame = frame_cap.read()[1]
     frame = cv2.resize(frame, (320, 240))
     #frame = cv2.rotate(frame, cv2.ROTATE_180)
 
@@ -65,7 +67,7 @@ while True:
 
 #############################################
 
-    CAM_FOV = math.radians(66)
+    CAM_FOV = math.radians(140)
     FORWARD_DIR = 0
     FOCAL_CONST = 235
 
@@ -205,5 +207,4 @@ while True:
 
 ## Cleanup ##
 ## cv2.waitKey(0)           # Make the program wait until you press a key before continuing.
-cap.close()
 cv2.destroyAllWindows()  # Close all OpenCV windows
