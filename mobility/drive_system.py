@@ -10,10 +10,10 @@ class DriveSystem:
     precise speed regulation based on encoder feedback.
     """
     def __init__(self,
-                 i2c_bus: int = 1,
+                 i2c_bus: int = 1, 
                  i2c_addr: int = 0x10,
-                 wheel_radius_m: float = 0.033,
-                 track_width_m: float = 0.16,
+                 wheel_radius_m: float = 0.070,
+                 track_width_m: float = 0.155,
                  control_hz: float = 25.0,
                  kp: float = 0.8,
                  ki: float = 0.2,
