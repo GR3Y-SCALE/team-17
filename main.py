@@ -1,14 +1,24 @@
-import os
-import cv2
-import time
+#!/usr/bin/env python3
 
-# import subsystems
-from navigation import NavClass
-# from mobility import MobilityClass
-# from gripper import gripperclass
-# from vision import visionclass
+import os,sys,time
+from mobility.drive_system import DriveSystem
+from navigation.NavClass import NavClass
+
+nav = NavClass(FOV=180, width=0.16)
+robot = DriveSystem()
 
 def main():
-    #vision update
-    #nav update
 
+    try:
+        robot.turn_degrees(90, 180)
+        while True:
+            print(robot.get_wheel_speeds())
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exiting")
+        robot.stop_all()
+
+
+
+if __name__ == "__main__":
+    main()
