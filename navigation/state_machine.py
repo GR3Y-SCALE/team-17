@@ -1,9 +1,11 @@
-from typing import Optional
+from typing import Optional, Any
 import time
 
 
 class State:
-    def __init__(self):
+    def __init__(self, robot: Any):
+        # Shared robot/simulator context (e.g., COPPELIA_WarehouseRobot)
+        self.robot = robot
         # Runs when state is instantiated
         print('current state: ', str(self))
 
@@ -19,21 +21,20 @@ class State:
 
 class StartState(State):
     def run(self, event: Optional[str] = None) -> "State":
-        # startup robot, home gripper, initialise motors cameras... etc.
-        if event != 'startup_done':
-            # If we haven't received the success event, fail fast (or return self to retry)
-            raise RuntimeError('Robot failed to start')
-        # On success, move to the next state
-        return FindPickingStation()
+        self.robot.SetTargetVelocities(0.5,0.0)
+        if event == 'startup_done':
+            return FindPickingStation(self.robot)
+        # stay here until startup succeeds
+        return self
 
 
 class FindPickingStation(State):
     def run(self, event: Optional[str] = None) -> "State":
         print('Searching for picking station...')
-        # turn robot, look, turn and so on until found. Some timeout condition if robot turns around full 360.
+
 
         if event == 'found_picking_station':
-            return MoveToShelf()
+            return MoveToShelf(self.robot)
         elif event == 'search_failed':
             # stay in this state or raise; here we stay to keep trying
             return self
@@ -48,7 +49,7 @@ class MoveToShelf(State):
         # drive to shelf, path plan, etc.
 
         if event == 'arrived_at_shelf':
-            return PlaceItemOnShelf()
+            return PlaceItemOnShelf(self.robot)
         elif event == 'navigation_blocked':
             # handle recovery; for now, keep trying
             return self
@@ -62,7 +63,7 @@ class PlaceItemOnShelf(State):
         # actuate gripper, verify placement, etc.
 
         if event == 'placed_item':
-            return LeaveShelf()
+            return LeaveShelf(self.robot)
         elif event == 'placement_failed':
             # retry placement by staying in the same state
             return self
@@ -76,7 +77,7 @@ class LeaveShelf(State):
         # back out and clear the shelf area
 
         if event == 'left_shelf':
-            return FindPickingStation()
+            return FindPickingStation(self.robot)
         elif event == 'exit_blocked':
             # try again
             return self
@@ -85,8 +86,12 @@ class LeaveShelf(State):
 
 
 class StateMachine:
-    def __init__(self):
-        self.state: State = StartState()
+    def __init__(self, robot: Any):
+        self.robot = robot
+        self.state: State = StartState(robot)
 
     def update_state(self, event: Optional[str] = None) -> None:
+        prev = self.state
         self.state = self.state.run(event)
+        if prev is not self.state:
+            print(f"transition: {prev} --({event})--> {self.state}")

@@ -1,14 +1,12 @@
-import os
-import cv2
-import time
+#!/usr/bin/env python3
 
-# import subsystems
-from navigation import NavClass
-# from mobility import MobilityClass
-# from gripper import gripperclass
-# from vision import visionclass
+import runpy
+
 
 def main():
-    #vision update
-    #nav update
+    # Delegate to the simulator entrypoint
+    runpy.run_module("sim.main", run_name="__main__")
 
+
+if __name__ == "__main__":
+    main()
