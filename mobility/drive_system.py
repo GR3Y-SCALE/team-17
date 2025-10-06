@@ -1,6 +1,6 @@
 import os, sys, time, math, threading
 from typing import Tuple, Optional
-from DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
+from mobility.DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
 
 
 class DriveSystem:
@@ -15,11 +15,11 @@ class DriveSystem:
                  wheel_radius_m: float = 0.070,
                  track_width_m: float = 0.155,
                  control_hz: float = 25.0,
-                 kp: float = 0.8,
-                 ki: float = 0.2,
-                 kd: float = 0.0,
+                 kp: float = 1.3,
+                 ki: float = 0.7,
+                 kd: float = 0.02,
                  invert_left: bool = False,
-                 invert_right: bool = False,
+                 invert_right: bool = True,
                  max_angular_rps: float = 1.0,
                  encoder_reduction_ratio: int = 100):
         """
@@ -103,24 +103,70 @@ class DriveSystem:
         self.board.motor_stop(self.board.ALL)
         print("Drive system shut down.")
 
-    def set_target_velocities(self, linear_mps: float, angular_rps: float):
+    def set_target_velocities(self, linear_mps: float, angular_dps: float):
         """
         Sets the desired linear and angular velocities for the robot.
 
         Args:
             linear_mps: Desired forward velocity in meters per second.
-            angular_rps: Desired angular (turning) velocity in radians per second.
+            angular_dps: Desired angular (turning) velocity in degrees per second.
         """
+        # Convert angular velocity from degrees/sec to meters/sec for each wheel
+        angular_rps = math.radians(angular_dps)
         v_l, v_r = self._twist_to_wheel_speeds(linear_mps, angular_rps)
         rpm_l = self._mps_to_rpm(v_l)
         rpm_r = self._mps_to_rpm(v_r)
-        
+
         with self._lock:
             self._target_rpm_l = rpm_l
             self._target_rpm_r = rpm_r
-            
+
         if not self._running:
             self._start_loop()
+
+    def drive_distance(self, distance_m: float, speed_mps: float = 0.1):
+        """
+        Drives the robot forward or backward a specified distance.
+
+        Args:
+            distance_m: The distance to drive in meters (positive for forward, negative for backward).
+            speed_mps: The speed at which to drive in meters per second.
+        """
+        if speed_mps <= 0.0:
+            raise ValueError("Speed must be positive.")
+        
+        direction = 1.0 if distance_m >= 0.0 else -1.0
+        target_distance = abs(distance_m)
+        speed_mps = abs(speed_mps) * direction
+        
+        # Reset encoders to zero
+        self.board.set_encoder_enable(self.board.ALL)
+        time.sleep(0.1)  # Give some time for encoders to reset
+        
+        self.set_target_velocities(speed_mps, 0.0)
+        
+        distance_traveled = 0.0
+        last_rpm_l, last_rpm_r = 0.0, 0.0
+        last_time = time.time()
+        
+        try:
+            while distance_traveled < target_distance:
+                time.sleep(0.1)
+                current_time = time.time()
+                dt = current_time - last_time
+                last_time = current_time
+                
+                rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
+                
+                # Average the two wheel speeds for distance calculation
+                avg_rpm = (abs(rpm_l) + abs(rpm_r)) / 2.0
+                avg_mps = self._rpm_to_mps(avg_rpm)
+                
+                distance_traveled += avg_mps * dt
+                
+                last_rpm_l, last_rpm_r = rpm_l, rpm_r
+        finally:
+            self.stop_all()
 
     def get_wheel_speeds(self) -> Tuple[float, float]:
         """
@@ -130,8 +176,7 @@ class DriveSystem:
             A tuple containing the left and right wheel speeds in meters per second.
         """
         # --- FIX: The get_encoder_speed() method must be called for each motor individually ---
-        rpm_l = float(self.board.get_encoder_speed(self.board.M1))
-        rpm_r = float(self.board.get_encoder_speed(self.board.M2))
+        rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
         
         v_l = self._rpm_to_mps(rpm_l)
         v_r = self._rpm_to_mps(rpm_r)
@@ -159,8 +204,13 @@ class DriveSystem:
                 t0 = time.time()
                 
                 # --- FIX: Must read each encoder speed with a separate call ---
-                rpm_l_meas = float(self.board.get_encoder_speed(self.board.M1))
-                rpm_r_meas = float(self.board.get_encoder_speed(self.board.M2))
+                rpm_l_meas,rpm_r_meas = self.board.get_encoder_speed(self.board.ALL)
+                
+
+                # if self.invert_left:
+                #     rpm_l_meas = rpm_l_meas * -1
+                # if self.invert_rightt:
+                #     rpm_r_meas = rpm_r_meas * -1
 
                 with self._lock:
                     rpm_l_target = self._target_rpm_l
@@ -168,7 +218,7 @@ class DriveSystem:
 
                 # --- REFACTOR: PID logic is now clearer and more direct ---
                 # Left Motor PID Calculation
-                err_l = rpm_l_target - rpm_l_meas
+                err_l = rpm_l_target - abs(rpm_l_meas)
                 self._integral_l += err_l * self.dt
                 self._integral_l = max(min(self._integral_l, 200.0), -200.0) # Integral clamping
                 deriv_l = (err_l - self._prev_err_l) / self.dt
@@ -176,7 +226,7 @@ class DriveSystem:
                 self._prev_err_l = err_l
                 
                 # Right Motor PID Calculation
-                err_r = rpm_r_target - rpm_r_meas
+                err_r = rpm_r_target - abs(rpm_r_meas)
                 self._integral_r += err_r * self.dt
                 self._integral_r = max(min(self._integral_r, 200.0), -200.0) # Integral clamping
                 deriv_r = (err_r - self._prev_err_r) / self.dt
@@ -228,6 +278,7 @@ class DriveSystem:
 
     # --- Kinematic helper functions (unchanged) ---
     def _twist_to_wheel_speeds(self, v: float, w: float) -> Tuple[float, float]:
+        # w is now in radians/sec (converted from degrees/sec in set_target_velocities)
         half_w = self.track_width_m / 2.0
         v_l = v - w * half_w
         v_r = v + w * half_w
@@ -240,3 +291,28 @@ class DriveSystem:
 
     def _rpm_to_mps(self, rpm: float) -> float:
         return (rpm / 60.0) * (2.0 * math.pi * self.wheel_radius_m)
+
+
+    # TODO, dont use timing, try to use encoders for feedback
+    # def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
+    #     """
+    #     Turns the robot in place by a specified number of degrees.
+
+    #     Args:
+    #         degrees: The angle to turn (positive for left/CCW, negative for right/CW).
+    #         angular_speed_dps: The speed to turn in degrees per second (default: 45).
+    #     """
+    #     if angular_speed_dps <= 0:
+    #         raise ValueError("Angular speed must be positive.")
+
+    #     direction = 1.0 if degrees >= 0 else -1.0
+    #     target_degrees = abs(degrees)
+    #     angular_speed_dps = abs(angular_speed_dps) * direction
+
+    #     # Calculate time required to turn
+    #     duration = target_degrees / abs(angular_speed_dps)
+
+    #     self.set_target_velocities(0.0, angular_speed_dps)
+    #     time.sleep(duration)
+    #     self.stop_all()
+    #     print(f"Turn complete: {degrees} degrees turned.")
