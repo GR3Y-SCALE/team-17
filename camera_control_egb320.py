@@ -146,30 +146,48 @@ while True:
             if MIN_W < w < MAX_W:
                 filtered_black_contours.append(cnt)
 
-        # Count and display all black contours (row markers)
-        num_black_markers = len(filtered_black_contours)
-        cv2.putText(frame, f"Row Markers: {num_black_markers}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2)
+        # Only count squares (width ≈ 4.5cm) and circles (diameter ≈ 7cm)
+        REAL_SQUARE_WIDTH = 4.5  # cm
+        REAL_CIRCLE_DIAM = 7.0   # cm
+        SQUARE_TOLERANCE = 0.25  # 25% tolerance
+        CIRCLE_TOLERANCE = 0.25  # 25% tolerance
 
-        # Optionally, draw rectangles and info for each black contour
+        valid_markers = 0
         for cnt in filtered_black_contours:
             bx, by, bw, bh = cv2.boundingRect(cnt)
-            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
-            # Black Angle
-            M = cv2.moments(cnt)
-            if M["m00"] != 0:
-                cx = int(M["m10"] / M["m00"])
-                frame_center_x = frame.shape[1] // 2
-                offset_px = cx - frame_center_x
-                angle_deg = (offset_px / frame.shape[1]) * 140
-                cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            # Black Distance
-            REAL_BLACK_WIDTH = 5.0  # adjust width
-            if bw > 0:
-                distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
-                cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+            # Estimate square width in cm (use REAL_SQUARE_WIDTH)
+            est_square_width = (REAL_SQUARE_WIDTH * FOCAL_CONST) / bw if bw > 0 else 0
+            is_square = abs(est_square_width - REAL_SQUARE_WIDTH) / REAL_SQUARE_WIDTH < SQUARE_TOLERANCE
+
+            # Estimate circle diameter in cm (use REAL_CIRCLE_DIAM)
+            (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+            est_circle_diam = (REAL_CIRCLE_DIAM * FOCAL_CONST) / (2 * radius) if radius > 0 else 0
+            is_circle = abs(est_circle_diam - REAL_CIRCLE_DIAM) / REAL_CIRCLE_DIAM < CIRCLE_TOLERANCE
+
+            if is_square or is_circle:
+                valid_markers += 1
+                # Draw marker
+                cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+                if is_circle:
+                    cv2.circle(frame, (int(cx), int(cy)), int(radius), (0, 0, 0), 2)
+                # Black Angle
+                M = cv2.moments(cnt)
+                if M["m00"] != 0:
+                    cx_m = int(M["m10"] / M["m00"])
+                    frame_center_x = frame.shape[1] // 2
+                    offset_px = cx_m - frame_center_x
+                    angle_deg = (offset_px / frame.shape[1]) * 140
+                    cv2.putText(frame, f"{angle_deg:.1f} deg", (cx_m, by - 25),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                # Black Distance
+                if bw > 0:
+                    distance_black = (REAL_SQUARE_WIDTH * FOCAL_CONST) / bw
+                    cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+
+        # Display only valid marker count
+        cv2.putText(frame, f"Row Markers: {valid_markers}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2)
 
 #############################################
 
