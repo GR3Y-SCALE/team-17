@@ -29,16 +29,15 @@ while True:
     upper_orange = (80, 255, 255)		# Upper bound for orange in HSV
     orange_mask = cv2.inRange(hsv_frame, lower_orange, upper_orange)
 
-
     ## Blue - Shelves ##
     lower_blue = (90, 230, 70)		    # Lower bound for blue in HSV
     upper_blue = (120, 255, 255)		# Upper bound for blue in HSV
     blue_mask = cv2.inRange(hsv_frame, lower_blue, upper_blue)
 
-    ## Yellow - Bay ##
-    lower_yellow = (10, 170, 230)		# Lower bound for yellow in HSV
-    upper_yellow = (40, 210, 255)		# Upper bound for yellow in HSV
-    yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
+    # ## Yellow - Bay ##
+    # lower_yellow = (10, 170, 230)		# Lower bound for yellow in HSV
+    # upper_yellow = (40, 210, 255)		# Upper bound for yellow in HSV
+    # yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
 
     ## Green - Person ##
     lower_green = (65, 200, 95)		    # Lower bound for green in HSV
@@ -55,7 +54,7 @@ while True:
 
     ## Combine Masks ##
     combined_mask = cv2.bitwise_or(orange_mask, blue_mask)
-    combined_mask = cv2.bitwise_or(combined_mask, yellow_mask)
+    # combined_mask = cv2.bitwise_or(combined_mask, yellow_mask)
     combined_mask = cv2.bitwise_or(combined_mask, green_mask)
     combined_mask = cv2.bitwise_or(combined_mask, black_mask_aisle)
     combined_mask = cv2.bitwise_or(combined_mask, black_mask_picking)
@@ -140,8 +139,68 @@ while True:
         MAX_W = 30
         filtered_black_contours = []
 
-        # Combine and filter black contours
-        for cnt in black_contours_aisle + black_contours_picking:
+        for cnt in black_contours_aisle:
+            x, y, w, h = cv2.boundingRect(cnt)
+            if MIN_W < w < MAX_W:
+                filtered_black_contours.append(cnt)
+        if filtered_black_contours:
+            largest_black = max(filtered_black_contours, key=cv2.contourArea)
+            bx, by, bw, bh = cv2.boundingRect(largest_black)
+            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+        
+        for cnt in black_contours_picking:
+            x, y, w, h = cv2.boundingRect(cnt)
+            if MIN_W < w < MAX_W:
+                filtered_black_contours.append(cnt)
+        if filtered_black_contours:
+            largest_black = max(filtered_black_contours, key=cv2.contourArea)
+            bx, by, bw, bh = cv2.boundingRect(largest_black)
+            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+
+        num_circle_contours = len(filtered_black_contours)
+        num_circle_contours = 0
+        for cnt in filtered_black_contours:
+            approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
+            area = cv2.contourArea(cnt)
+            if area < 10:
+                (x,y), radius = cv2.minEnclosingCircle(cnt)
+                circle_area = math.pi * (radius ** 2)
+                if area / circle_area > 0.7:
+                    num_circle_contours += 1
+            # print(f"Number of circle-like contours: {num_circle_contours}")
+        
+            # Shape Detection (Circle vs Square)
+            # print(len(approx))
+            # if len(approx) == 1:
+            #     shape = "Circle"
+            #     print("Circle")
+            # else:
+            #     shape = "Square"
+            #     print("Square")
+            # cv2.drawContours(frame, approx, 0, (0, 0, 0), 2)
+            # x, y = approx[0][0]
+            # cv2.putText(frame, shape, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 2)
+
+            # Black Angle
+            M = cv2.moments(cnt)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                frame_center_x = frame.shape[1] // 2
+                offset_px = cx - frame_center_x
+                angle_deg = (offset_px / frame.shape[1]) * 140
+                cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+            # Black Distance
+            REAL_BLACK_WIDTH = 5.0  # adjust width
+            if bw > 0:
+                distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
+                cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                #print(f"Estimated distance to black: {distance_black:.1f} cm")
+
+                # Combine and filter black contours
+        """ for cnt in black_contours_aisle + black_contours_picking:
             x, y, w, h = cv2.boundingRect(cnt)
             if MIN_W < w < MAX_W:
                 filtered_black_contours.append(cnt)
@@ -187,7 +246,7 @@ while True:
 
         # Display only valid marker count
         cv2.putText(frame, f"Row Markers: {valid_markers}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2)  """
 
 #############################################
 
