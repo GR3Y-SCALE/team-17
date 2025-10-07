@@ -17,7 +17,7 @@ while True:
     # frame = cap.capture_array()
     frame = frame_cap.read()[1]
     frame = cv2.resize(frame, (320, 240))
-    #frame = cv2.rotate(frame, cv2.ROTATE_180)
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
 
     ## Colour Spaces ##
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 		# Convert from BGR to HSV colourspace
@@ -132,7 +132,7 @@ while True:
         angle_deg = (offset_px / frame.shape[1]) * 140  # 140 is your FOV in degrees
         cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (ux, uy - 10),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-        print(f"Shelf angle: {angle_deg:.1f} degrees")
+        #print(f"Shelf angle: {angle_deg:.1f} degrees")
 
         black_contours_aisle, _ = cv2.findContours(black_mask_aisle, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         black_contours_picking, _ = cv2.findContours(black_mask_picking, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
