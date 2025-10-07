@@ -6,7 +6,7 @@ import math
 
 ## Camera Object ##
 # cap = picamera2.Picamera2() now using 120 USB camera
-frame_cap = cv2.VideoCapture(0)
+frame_cap = cv2.VideoCapture(1)
 # config = cap.create_video_configuration(main={"format":'XRGB8888',"size":(820,616)})
 # cap.configure(config)
 # cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,2.0)})
@@ -29,6 +29,7 @@ while True:
     upper_orange = (80, 255, 255)		# Upper bound for orange in HSV
     orange_mask = cv2.inRange(hsv_frame, lower_orange, upper_orange)
 
+
     ## Blue - Shelves ##
     lower_blue = (90, 230, 70)		    # Lower bound for blue in HSV
     upper_blue = (120, 255, 255)		# Upper bound for blue in HSV
@@ -40,10 +41,9 @@ while True:
     yellow_mask = cv2.inRange(hsv_frame, lower_yellow, upper_yellow)
 
     ## Green - Person ##
-    lower_green = (65, 200, 95)		# Lower bound for green in HSV
+    lower_green = (65, 200, 95)		    # Lower bound for green in HSV
     upper_green = (85, 255, 190)		# Upper bound for green in HSV
     green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
-
 
     lower_black = (20, 50, 50)
     upper_black = (30, 160, 120)
@@ -86,7 +86,7 @@ while True:
                 # Calculate pixel offset from center
                 frame_center_x = frame.shape[1] // 2
                 offset_px = cx - frame_center_x
-                angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
+                angle_deg = (offset_px / frame.shape[1]) * 140  # 140 is your FOV in degrees
                 cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, oy - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 140, 255), 2)
 
@@ -112,7 +112,7 @@ while True:
                 cx = int(M["m10"] / M["m00"])
                 frame_center_x = frame.shape[1] // 2
                 offset_px = cx - frame_center_x
-                angle_deg = (offset_px / frame.shape[1]) * 66
+                angle_deg = (offset_px / frame.shape[1]) * 140
                 cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, gy - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
@@ -136,7 +136,7 @@ while True:
         frame_center_x = frame.shape[1] // 2
         offset_px = shelf_center_x - frame_center_x
         # Estimate angle (in degrees) using FOV and pixel offset
-        angle_deg = (offset_px / frame.shape[1]) * 66  # 66 is your FOV in degrees
+        angle_deg = (offset_px / frame.shape[1]) * 140  # 140 is your FOV in degrees
         cv2.putText(frame, f"Angle: {angle_deg:.1f} deg", (ux, uy - 10),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         print(f"Shelf angle: {angle_deg:.1f} degrees")
@@ -177,7 +177,7 @@ while True:
                 cx = int(M["m10"] / M["m00"])
                 frame_center_x = frame.shape[1] // 2
                 offset_px = cx - frame_center_x
-                angle_deg = (offset_px / frame.shape[1]) * 66
+                angle_deg = (offset_px / frame.shape[1]) * 140
                 cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
@@ -206,5 +206,5 @@ while True:
 # cv2.imwrite("frame0001.png", frame) 
 
 ## Cleanup ##
-## cv2.waitKey(0)           # Make the program wait until you press a key before continuing.
+# cv2.waitKey(0)           # Make the program wait until you press a key before continuing.
 cv2.destroyAllWindows()  # Close all OpenCV windows
