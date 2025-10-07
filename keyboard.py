@@ -17,6 +17,10 @@ SPEED_FAST = 100
 SPEED_SLOW = 30
 current_speed = SPEED_FAST                 # duty‑cycle percentage
 
+SPIN_SPEED = SPEED_SLOW
+is_spinning = False   # toggled by 'r'
+
+
 # ── Tiny helpers ───────────────────────────────────────────────────────────
 def set_motor(motor, value: int):
     """ value ∈ [-100,100] : sign = direction, abs = duty """
@@ -36,6 +40,17 @@ def read_key():
         return "quit"
     return c.decode().lower()
 
+def spin_in_place(clockwise: bool = True):
+    """
+    Command an in-place spin at SPIN_SPEED using current motor mounting.
+    'clockwise=True' spins one way; False reverses it.
+    """
+    # With current mapping: forward uses (+ on M1, - on M2).
+    # For an in-place spin we drive BOTH motors the same sign.
+    v = SPIN_SPEED if clockwise else -SPIN_SPEED
+    set_motor(board.M1, v)
+    set_motor(board.M2, v)
+
 # ── Main loop ──────────────────────────────────────────────────────────────
 def main():
     old = termios.tcgetattr(sys.stdin.fileno())
@@ -47,7 +62,9 @@ def main():
     board.set_encoder_reduction_ratio(board.ALL, 100)
     board.set_moter_pwm_frequency(1000)
 
-    global current_speed  # will change this inside the loop
+    # === NEW SPIN MODE: uses globals set elsewhere (SPIN_SPEED, is_spinning, spin_in_place) ===
+    global current_speed, is_spinning
+    # === END NEW SPIN MODE ===
 
     try:
         while True:
@@ -63,12 +80,46 @@ def main():
                 print("Speed set to GENTLE =", current_speed)
                 continue
 
+            # === NEW SPIN MODE: toggle with 'r' (spin in place at slow speed) ===
+            elif k == "r":
+                if not is_spinning:
+                    is_spinning = True
+                    current_speed = SPEED_SLOW  # ensure slow while spinning
+                    spin_in_place(clockwise=True)  # set False for opposite direction
+                    print("Spin mode: ON (slow). Press R/W/A/S/D/Space to exit.")
+                else:
+                    is_spinning = False
+                    stop_all()
+                    print("Spin mode: OFF")
+                continue
+            # === END NEW SPIN MODE ===
+
             # --- NEW: use current_speed instead of SPEED ---
-            if   k == "w":  set_motor(board.M1,  current_speed); set_motor(board.M2, -current_speed)
-            elif k == "s":  set_motor(board.M1, -current_speed); set_motor(board.M2,  current_speed)
-            elif k == "a":  set_motor(board.M1,               0); set_motor(board.M2, -current_speed)
-            elif k == "d":  set_motor(board.M1,  current_speed); set_motor(board.M2,               0)
-            elif k == " ":  stop_all()
+            if   k == "w":
+                # === NEW SPIN MODE: cancel spin on manual command ===
+                if is_spinning: is_spinning = False
+                # === END NEW SPIN MODE ===
+                set_motor(board.M1,  current_speed); set_motor(board.M2, -current_speed)
+            elif k == "s":
+                # === NEW SPIN MODE: cancel spin on manual command ===
+                if is_spinning: is_spinning = False
+                # === END NEW SPIN MODE ===
+                set_motor(board.M1, -current_speed); set_motor(board.M2,  current_speed)
+            elif k == "a":
+                # === NEW SPIN MODE: cancel spin on manual command ===
+                if is_spinning: is_spinning = False
+                # === END NEW SPIN MODE ===
+                set_motor(board.M1,               0); set_motor(board.M2, -current_speed)
+            elif k == "d":
+                # === NEW SPIN MODE: cancel spin on manual command ===
+                if is_spinning: is_spinning = False
+                # === END NEW SPIN MODE ===
+                set_motor(board.M1,  current_speed); set_motor(board.M2,               0)
+            elif k == " ":
+                # === NEW SPIN MODE: cancel spin on stop ===
+                if is_spinning: is_spinning = False
+                # === END NEW SPIN MODE ===
+                stop_all()
             elif k in {"x", "quit"}:
                 break
     except KeyboardInterrupt:
@@ -80,4 +131,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
