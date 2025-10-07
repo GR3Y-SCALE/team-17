@@ -141,15 +141,29 @@ while True:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         print(f"Shelf angle: {angle_deg:.1f} degrees")
 
+
         black_contours, _ = cv2.findContours(black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if black_contours:
-            largest_black = max(black_contours, key=cv2.contourArea)
+        
+        # Filter black contours by width (in pixels)
+        MIN_WIDTH = 0    # Minimum width in pixels
+        MAX_WIDTH = 47   # Maximum width in pixels (approximately 5cm at your focal length)
+        filtered_black_contours = []
+        
+        for cnt in black_contours:
+            # Get bounding box to check width
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Filter by width in pixels
+            if MIN_WIDTH <= w <= MAX_WIDTH:
+                filtered_black_contours.append(cnt)
+        
+        # Find the largest contour within the width range
+        if filtered_black_contours:
+            largest_black = max(filtered_black_contours, key=cv2.contourArea)
             bx, by, bw, bh = cv2.boundingRect(largest_black)
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
 
-        num_circle_contours = len(black_contours)
         num_circle_contours = 0
-        for cnt in black_contours:
+        for cnt in filtered_black_contours:
             approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
             area = cv2.contourArea(cnt)
             if area < 10:
@@ -181,12 +195,15 @@ while True:
                 cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
-            # Black Distance
+            # Black Distance - calculate for each individual contour
             REAL_BLACK_WIDTH = 5.0  # adjust width
-            if bw > 0:
-                distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
-                cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
+            cnt_x, cnt_y, cnt_w, cnt_h = cv2.boundingRect(cnt)
+            if cnt_w > 0:
+                distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / cnt_w
+                cv2.putText(frame, f"{distance_black:.1f}cm", (cnt_x, cnt_y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                cv2.putText(frame, f"W:{cnt_w}px", (cnt_x, cnt_y + cnt_h + 15),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
                 print(f"Estimated distance to black: {distance_black:.1f} cm")
 
 #############################################
