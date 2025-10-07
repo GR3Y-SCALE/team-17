@@ -45,9 +45,9 @@ while True:
     upper_green = (85, 255, 190)		# Upper bound for green in HSV
     green_mask = cv2.inRange(hsv_frame, lower_green, upper_green)
 
-    lower_black = (20, 50, 50)
-    upper_black = (30, 160, 120)
-    black_mask = cv2.inRange(hsv_frame, lower_black, upper_black)
+    lower_black_aisle = (0, 0, 0)
+    upper_black_aisle = (179, 182, 110)
+    black_mask = cv2.inRange(hsv_frame, lower_black_aisle, upper_black_aisle)
 
     ## Combine Masks ##
     combined_mask = cv2.bitwise_or(orange_mask, blue_mask)

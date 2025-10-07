@@ -1,7 +1,10 @@
 #import the necessary packages
 import cv2
 import numpy as np
-#'optional' argument is required for trackbar creation parameters
+
+#callback function for trackbars (required but does nothing)
+def nothing(x):
+    pass
 
 #Capture video from the stream
 cap = cv2.VideoCapture(0)
