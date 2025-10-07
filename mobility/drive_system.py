@@ -312,7 +312,7 @@ class DriveSystem:
 
         try:
             while angle_rotated < target_angle:
-                time.sleep(0.1)
+                time.sleep(0.01)
                 current_time = time.time()
                 dt = current_time - last_time
                 last_time = current_time
