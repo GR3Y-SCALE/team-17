@@ -327,14 +327,14 @@ class DriveSystem:
         Best-effort encoder reset. If board exposes a dedicated 'clear encoder'
         method, call it here instead. This version toggles enable and waits briefly.
         """
-        # need sto be adjusted to suit please (if your board has a different encoder clear method)
+        # needs to be adjusted to suit (if your board has a different encoder clear method)
         try:
             self.board.set_encoder_enable(self.board.ALL)
         except Exception as e:
             print(f"Encoder enable/reset warning: {e}")
         time.sleep(0.05)
 
-    # -- Utility: get current wheel RPMs as floats --
+    # Utility: get current wheel RPMs as floats --
     def _rpm_pair(self) -> Tuple[float, float]:
         """Returns (left_rpm, right_rpm) as floats from the motor board."""
         rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
@@ -364,21 +364,21 @@ class DriveSystem:
         finally:
             self.stop_all()
 
-    # -- Helper: Twist-style adapter (v in m/s, w in rad/s) --
+    # Helper: Twist-style adapter (v in m/s, w in rad/s) --
     def cmd_twist(self, v_mps: float, w_rad_s: float):
         """
         Convenience adapter if Navigation publishes (v, w) with w in rad/s.
         """
         self.set_target_velocities(v_mps, math.degrees(w_rad_s))
 
-    # -- Closed-loop, encoder-based in-place turn (no timing guesswork) --
+    # Closed-loop, encoder-based in-place turn (no timing guesswork) --
     def turn_degrees(self,
                      degrees: float,
-                     # need sto be adjusted to suit please (default spin speed for your robot/hardware)
+                     # need sto be adjusted to suit (default spin speed for your robot/hardware)
                      angular_speed_dps: float = 90.0,
-                     # need sto be adjusted to suit please (how precise the stop needs to be)
+                     # need sto be adjusted to suit (how precise the stop needs to be)
                      stop_tolerance_deg: float = 2.0,
-                     # need sto be adjusted to suit please (where to start feathering the speed)
+                     # need sto be adjusted to suit (where to start feathering the speed)
                      feather_start_deg: float = 20.0):
         """
         Turn the robot in place by 'degrees' using encoder feedback.
