@@ -47,25 +47,18 @@ while True:
 
     lower_black_aisle = (0, 0, 0)
     upper_black_aisle = (179, 182, 110)
-    black_mask = cv2.inRange(hsv_frame, lower_black_aisle, upper_black_aisle)
+    black_mask_aisle = cv2.inRange(hsv_frame, lower_black_aisle, upper_black_aisle)
+
+    lower_black_picking = (0, 0, 0)
+    upper_black_picking = (0, 0, 77)
+    black_mask_picking = cv2.inRange(hsv_frame, lower_black_picking, upper_black_picking)
 
     ## Combine Masks ##
     combined_mask = cv2.bitwise_or(orange_mask, blue_mask)
     combined_mask = cv2.bitwise_or(combined_mask, yellow_mask)
     combined_mask = cv2.bitwise_or(combined_mask, green_mask)
-    combined_mask = cv2.bitwise_or(combined_mask, black_mask)
-
-    # # Print which color masks are detected
-    # if np.any(orange_mask):
-    #     print("Orange detected")
-    # if np.any(blue_mask):
-    #     print("Blue detected")
-    # if np.any(yellow_mask):
-    #     print("Yellow detected")
-    # if np.any(green_mask):
-    #     print("Green detected")
-
-#############################################
+    combined_mask = cv2.bitwise_or(combined_mask, black_mask_aisle)
+    combined_mask = cv2.bitwise_or(combined_mask, black_mask_picking)
 
     CAM_FOV = math.radians(140)
     FORWARD_DIR = 0
@@ -141,11 +134,22 @@ while True:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         print(f"Shelf angle: {angle_deg:.1f} degrees")
 
-        black_contours, _ = cv2.findContours(black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        black_contours_aisle, _ = cv2.findContours(black_mask_aisle, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        black_contours_picking, _ = cv2.findContours(black_mask_picking, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         MIN_W = 0
         MAX_W = 30
         filtered_black_contours = []
-        for cnt in black_contours:
+
+        for cnt in black_contours_aisle:
+            x, y, w, h = cv2.boundingRect(cnt)
+            if MIN_W < w < MAX_W:
+                filtered_black_contours.append(cnt)
+        if filtered_black_contours:
+            largest_black = max(filtered_black_contours, key=cv2.contourArea)
+            bx, by, bw, bh = cv2.boundingRect(largest_black)
+            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
+        
+        for cnt in black_contours_picking:
             x, y, w, h = cv2.boundingRect(cnt)
             if MIN_W < w < MAX_W:
                 filtered_black_contours.append(cnt)
