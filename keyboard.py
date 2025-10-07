@@ -14,7 +14,7 @@ while board.begin() != board.STA_OK:
 FWD, REV = board.CW, board.CCW
 
 SPEED_FAST = 100
-SPEED_SLOW = 30
+SPEED_SLOW = 40
 current_speed = SPEED_FAST                 # duty‑cycle percentage
 
 SPIN_SPEED = SPEED_SLOW
