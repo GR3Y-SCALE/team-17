@@ -6,7 +6,7 @@ import math
 
 ## Camera Object ##
 # cap = picamera2.Picamera2() now using 120 USB camera
-frame_cap = cv2.VideoCapture(1)
+frame_cap = cv2.VideoCapture(0)
 # config = cap.create_video_configuration(main={"format":'XRGB8888',"size":(820,616)})
 # cap.configure(config)
 # cap.set_controls({"ExposureTime": 100000, "AnalogueGain": 1.0, "ColourGains": (1.4,2.0)})
@@ -142,14 +142,21 @@ while True:
         print(f"Shelf angle: {angle_deg:.1f} degrees")
 
         black_contours, _ = cv2.findContours(black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if black_contours:
-            largest_black = max(black_contours, key=cv2.contourArea)
+        MIN_W = 0
+        MAX_W = 30
+        filtered_black_contours = []
+        for cnt in black_contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            if MIN_W < w < MAX_W:
+                filtered_black_contours.append(cnt)
+        if filtered_black_contours:
+            largest_black = max(filtered_black_contours, key=cv2.contourArea)
             bx, by, bw, bh = cv2.boundingRect(largest_black)
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), (0, 0, 0), 2)
 
-        num_circle_contours = len(black_contours)
+        num_circle_contours = len(filtered_black_contours)
         num_circle_contours = 0
-        for cnt in black_contours:
+        for cnt in filtered_black_contours:
             approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
             area = cv2.contourArea(cnt)
             if area < 10:
@@ -179,14 +186,14 @@ while True:
                 offset_px = cx - frame_center_x
                 angle_deg = (offset_px / frame.shape[1]) * 140
                 cv2.putText(frame, f"{angle_deg:.1f} deg", (cx, by - 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
             # Black Distance
             REAL_BLACK_WIDTH = 5.0  # adjust width
             if bw > 0:
                 distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
                 cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 print(f"Estimated distance to black: {distance_black:.1f} cm")
 
 #############################################
