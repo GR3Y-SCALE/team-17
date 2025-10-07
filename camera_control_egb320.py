@@ -197,7 +197,7 @@ while True:
             if bw > 0:
                 distance_black = (REAL_BLACK_WIDTH * FOCAL_CONST) / bw
                 cv2.putText(frame, f"{distance_black:.1f}cm", (bx, by - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
                 print(f"Estimated distance to black: {distance_black:.1f} cm")
 
 #############################################
