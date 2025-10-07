@@ -1,25 +1,19 @@
-from gpiozero import Servo
-from time import sleep
-import numpy as np
+import serial, time
 
-# FS90R on GPIO19
-servo = Servo(19, min_pulse_width=0.0010, max_pulse_width=0.0020)
+pico = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
-# Create smooth sweep values between -0.3 and +0.3
-sweep_values = np.linspace(-0.3, 0.3, 30)  # 30 steps for smooth motion
+def move_lift(level):
+    pico.write(f"L{level}\n".encode())
 
-try:
-    while True:
-        # Sweep left to right
-        for val in sweep_values:
-            servo.value = val
-            sleep(0.05)  # adjust speed: smaller = slower
+def open_gripper():
+    pico.write(b"G1\n")
 
-        # Sweep right to left
-        for val in reversed(sweep_values):
-            servo.value = val
-            sleep(0.05)
+def close_gripper():
+    pico.write(b"G0\n")
 
-except KeyboardInterrupt:
-    servo.mid()  # stop servo on exit
-    print("Stopped cleanly")
+# Example sequence
+move_lift(0)   # ground
+close_gripper()
+time.sleep(2)
+move_lift(3)   # shelf 3
+open_gripper()
