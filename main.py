@@ -46,16 +46,25 @@ def main():
                             if not bay_marker[iteration]:
                                 print("Error: No bay marker found")
                                 # turn right until the correct marker is found
-                            else:
+                            elif bay_marker[iteration][0] > 0.10:
                                 # nav_data = nav.calculate_goal_velocities(bay_maker[iteration][1]) This feeds in the heading of the bay marker
                                 # robot.set_target_velocities(0.01, nav_data['rotational_velocity'])
+                                pass
+                            else:
+                                # robot is now within 10 centimeters of the bay marker
+                                state = collection_state.APPROACHING_ITEM
 
-                            robot_collection_state = collection_state.APPROACHING_ITEM
                         case collection_state.APPROACHING_ITEM:
                             # blah blah
-                            robot_collection_state = collection_state.PICKING_UP_ITEM
+                            # get items and filter to the one that is closest to the center of the camera, thus the right one
+                            if chosen_item[0] > 0.05:
+                                # nav_data = nav.calculate_goal_velocities(chosen_item[1])
+                                # robot.set_target_velocities(0.01, nav_data['rotational_velocity'])
+                                pass
+                            else: 
+                                robot_collection_state = collection_state.PICKING_UP_ITEM
                         case collection_state.PICKING_UP_ITEM:
-                            # blah blah
+                            # Open gripper and ensure it is at the lowest position
                             robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
                             robot_navigation_state = robot_state.FIND_SHELF
 
