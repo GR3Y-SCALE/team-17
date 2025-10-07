@@ -13,23 +13,55 @@ class robot_state(Enum):
     FIND_SHELF = auto()
     DESPOSIT_ITEM = auto()
     RETURN_TO_PICKING_STATION = auto()
-state = robot_state.COLLECT_ITEM
+robot_navigation_state = robot_state.COLLECT_ITEM
+
+class collection_state(Enum):
+    HEADING_TO_CORRECT_BAY = auto()
+    APPROACHING_ITEM = auto()
+    PICKING_UP_ITEM = auto()
+robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 iteration = 0
+dt = 0.1
+last_time = time.time()
 
 def main():
+    now = time.time()
+    elapsed = now - last_time
+    while elapsed < dt:
+        time.sleep(dt - elapsed)
+        continue
+    last_time = now 
 
     try:
         robot.turn_degrees(90, 180)
         while True:
             # Update camera objects
-            match state:
+            match robot_navigation_state:
                 case robot_state.COLLECT_ITEM:
                     # update camera objects
-                    # drive to correct collection bay and stop at set distance
+                    match robot_collection_state:
+                        case collection_state.HEADING_TO_CORRECT_BAY:
+                            # turn left
+                            if not bay_marker[iteration]:
+                                print("Error: No bay marker found")
+                                # turn right until the correct marker is found
+                            else:
+                                # nav_data = nav.calculate_goal_velocities(bay_maker[iteration][1]) This feeds in the heading of the bay marker
+                                # robot.set_target_velocities(0.01, nav_data['rotational_velocity'])
+
+                            robot_collection_state = collection_state.APPROACHING_ITEM
+                        case collection_state.APPROACHING_ITEM:
+                            # blah blah
+                            robot_collection_state = collection_state.PICKING_UP_ITEM
+                        case collection_state.PICKING_UP_ITEM:
+                            # blah blah
+                            robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
+                            robot_navigation_state = robot_state.FIND_SHELF
+
+
                     # drive slowly to item and stop at set distance
                     # pick up item
-                    state = robot_state.FIND_SHELF
                 case robot_state.FIND_SHELF:
                     # update camera
                     # Turn 180 degrees from marker
