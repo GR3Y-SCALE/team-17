@@ -260,10 +260,8 @@ def camera_operation():
 
     while True:
         # Capture and preprocess frame
-        ret, frame = frame_cap.read()
-        if not ret:
-            break
-            
+        frame = frame_cap.read()[1]
+
         frame = cv2.resize(frame, (320, 240))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -369,3 +367,6 @@ def camera_operation():
 
     cv2.destroyAllWindows()
     return (items_rb, packing_station_rb, obstacles_rb, row_marker_rb, shelf_rb, picking_station_rb)
+
+if __name__ == "__main__":
+    camera_operation()
