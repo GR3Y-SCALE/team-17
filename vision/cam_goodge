@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import math
-# from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN
 
 # Camera setup
 frame_cap = cv2.VideoCapture(0)
@@ -172,37 +172,37 @@ def process_circle_groups(circles, frame):
     return distance_m, bearing_deg
 
 
-def simple_cluster_squares(square_centers, max_distance=100):
-    """ Simple distance-based clustering for square centers """
-    if not square_centers:
-        return []
+# def simple_cluster_squares(square_centers, max_distance=100):
+#     """ Simple distance-based clustering for square centers """
+#     if not square_centers:
+#         return []
     
-    groups = []
-    used = [False] * len(square_centers)
+#     groups = []
+#     used = [False] * len(square_centers)
     
-    for i, center in enumerate(square_centers):
-        if used[i]:
-            continue
+#     for i, center in enumerate(square_centers):
+#         if used[i]:
+#             continue
             
-        # Start new group
-        group = [center]
-        used[i] = True
+#         # Start new group
+#         group = [center]
+#         used[i] = True
         
-        # Find nearby squares
-        for j, other_center in enumerate(square_centers):
-            if used[j]:
-                continue
+#         # Find nearby squares
+#         for j, other_center in enumerate(square_centers):
+#             if used[j]:
+#                 continue
             
-            # Calculate distance between centers
-            distance = math.sqrt((center[0] - other_center[0])**2 + (center[1] - other_center[1])**2)
+#             # Calculate distance between centers
+#             distance = math.sqrt((center[0] - other_center[0])**2 + (center[1] - other_center[1])**2)
             
-            if distance <= max_distance:
-                group.append(other_center)
-                used[j] = True
+#             if distance <= max_distance:
+#                 group.append(other_center)
+#                 used[j] = True
         
-        groups.append(group)
+#         groups.append(group)
     
-    return groups
+#     return groups
 
 
 def process_square_groups(square_centers, frame):
@@ -211,10 +211,10 @@ def process_square_groups(square_centers, frame):
         return None
     
     # Cluster squares based on proximity
-    groups = simple_cluster_squares(square_centers, max_distance=100)
-    # square_centers_array = np.array(square_centers)
-    # clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
-    # labels = clustering.labels_
+    # groups = simple_cluster_squares(square_centers, max_distance=100)
+    square_centers_array = np.array(square_centers)
+    clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
+    labels = clustering.labels_
     
     for group_id, members in enumerate(groups):
         members_array = np.array(members)
