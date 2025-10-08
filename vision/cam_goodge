@@ -429,8 +429,8 @@ upperWhite      = np.array([80, 55, 255])
 # ===== INITIATE PICAMERA =====
 # -----------------------------
 picam2 = cv2.VideoCapture(0)
-picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
-picam2.start()
+#picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
+#picam2.start()
 
 debug_mode = False
 
