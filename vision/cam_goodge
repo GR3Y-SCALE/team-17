@@ -1,175 +1,175 @@
-# import cv2
-# import numpy as np
-# import math
-# from sklearn.cluster import DBSCAN
+import cv2
+import numpy as np
+import math
+from sklearn.cluster import DBSCAN
 
-# # Camera setup
-# frame_cap = cv2.VideoCapture(0)
+# Camera setup
+frame_cap = cv2.VideoCapture(0)
 
-# # Camera Configuration Constants (mm)
-# FOCAL_LENGTH = 2.9
-# SENSOR_HEIGHT = 2.4
-# SENSOR_WIDTH = 3.2
-# CAM_FOV = 140  # degrees
+# Camera Configuration Constants (mm)
+FOCAL_LENGTH = 2.9
+SENSOR_HEIGHT = 2.4
+SENSOR_WIDTH = 3.2
+CAM_FOV = 140  # degrees
 
-# # Detection Thresholds
-# MIN_CONTOUR_AREA = 200
-# CIRCULARITY_THRESHOLD = 0.85
-# SQUARE_ASPECT_RATIO_MIN = 0.9
-# SQUARE_ASPECT_RATIO_MAX = 1.1
+# Detection Thresholds
+MIN_CONTOUR_AREA = 200
+CIRCULARITY_THRESHOLD = 0.85
+SQUARE_ASPECT_RATIO_MIN = 0.9
+SQUARE_ASPECT_RATIO_MAX = 1.1
 
-# # Known Object Sizes (mm)
-# SINGLE_CIRCLE_SIZE = 70
-# MULTI_CIRCLE_SIZE = 120
-# SQUARE_SIZE = 50
-# PLATFORM_SPACING = 300
+# Known Object Sizes (mm)
+SINGLE_CIRCLE_SIZE = 70
+MULTI_CIRCLE_SIZE = 120
+SQUARE_SIZE = 50
+PLATFORM_SPACING = 300
 
-# # HSV Color Ranges
-# lower_black_pick = np.array([0, 0, 0])
-# upper_black_pick = np.array([180, 255, 50])
-# lower_black_aisle = np.array([0, 0, 0])
-# upper_black_aisle = np.array([180, 40, 130])
+# HSV Color Ranges
+lower_black_pick = np.array([0, 0, 0])
+upper_black_pick = np.array([180, 255, 130])
+lower_black_aisle = np.array([0, 0, 0])
+upper_black_aisle = np.array([180, 40, 130])
 
-# lower_orange1 = np.array([0, 120, 80])
-# upper_orange1 = np.array([15, 255, 255])
-# lower_orange2 = np.array([170, 120, 80])
-# upper_orange2 = np.array([180, 255, 255])
+lower_orange1 = np.array([0, 120, 80])
+upper_orange1 = np.array([15, 255, 255])
+lower_orange2 = np.array([170, 120, 80])
+upper_orange2 = np.array([180, 255, 255])
 
-# lower_yellow = np.array([20, 152, 149])
-# upper_yellow = np.array([40, 255, 255])
+lower_yellow = np.array([20, 152, 149])
+upper_yellow = np.array([40, 255, 255])
 
-# lower_blue = np.array([60, 50, 60])
-# upper_blue = np.array([150, 255, 255])
+lower_blue = np.array([60, 50, 60])
+upper_blue = np.array([150, 255, 255])
 
-# lower_white = np.array([0, 0, 150])
-# upper_white = np.array([80, 55, 255])
+lower_white = np.array([0, 0, 150])
+upper_white = np.array([80, 55, 255])
 
-# lower_green = np.array([65, 200, 95]) # From old code
-# upper_green = np.array([85, 255, 190])
-
-
-# def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
-#     """ Calculate distance and bearing to object based on bounding box"""
-#     x, y, w, h = bbox
-#     target_x = int(x + w / 2)
-#     target_y = int(y + h / 2)
-
-#     # Calculate distance using pinhole camera model
-#     object_size = max(w, h)
-#     img_height_px = frame_shape[0]
-#     distance_mm = (FOCAL_LENGTH * known_size_mm * img_height_px) / (object_size * SENSOR_HEIGHT)
-#     distance_m = distance_mm / 1000
-
-#     # Calculate bearing angle from center of frame
-#     img_width_px = frame_shape[1]
-#     mid_px = target_x - (img_width_px / 2)
-#     bearing_deg = (CAM_FOV * mid_px) / img_width_px
-
-#     return target_x, target_y, distance_m, bearing_deg
+lower_green = np.array([65, 200, 95]) # From old code
+upper_green = np.array([85, 255, 190])
 
 
-# def detect_circles(contours_black, frame): # Changed from contours to contours_black
-#     """ Detect circular objects from contours """
-#     circles = []
+def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
+    """ Calculate distance and bearing to object based on bounding box"""
+    x, y, w, h = bbox
+    target_x = int(x + w / 2)
+    target_y = int(y + h / 2)
 
-#     for contour in contours_black:
-#         area = cv2.contourArea(contour)
-#         perimeter = cv2.arcLength(contour, True)
+    # Calculate distance using pinhole camera model
+    object_size = max(w, h)
+    img_height_px = frame_shape[0]
+    distance_mm = (FOCAL_LENGTH * known_size_mm * img_height_px) / (object_size * SENSOR_HEIGHT)
+    distance_m = distance_mm / 1000
 
-#         if perimeter > 0 and area > MIN_CONTOUR_AREA:
-#             circularity = (4 * math.pi * area) / (perimeter * perimeter)
-#             if circularity > CIRCULARITY_THRESHOLD:
-#                 (x, y), radius = cv2.minEnclosingCircle(contour)
-#                 center = (int(x), int(y))
-#                 radius = int(radius)
-#                 circles.append((center, radius))
+    # Calculate bearing angle from center of frame
+    img_width_px = frame_shape[1]
+    mid_px = target_x - (img_width_px / 2)
+    bearing_deg = (CAM_FOV * mid_px) / img_width_px
 
-#                 # Draw circle and label
-#                 cv2.circle(frame, center, radius, (0, 255, 0), 2)
-#                 cv2.putText(frame, "Circle", (center[0] - 30, center[1] - 10), 
-#                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
-#     return circles
+    return target_x, target_y, distance_m, bearing_deg
 
 
-# def detect_squares(contours_black, frame): # Changed from contours to contours_black
-#     """ Detect square objects from contours """
-#     square_centers = []
+def detect_circles(contours_black, frame): # Changed from contours to contours_black
+    """ Detect circular objects from contours """
+    circles = []
 
-#     for contour in contours_black:
-#         area = cv2.contourArea(contour)
-#         perimeter = cv2.arcLength(contour, True)
+    for contour in contours_black:
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
 
-#         if perimeter > 0 and area > MIN_CONTOUR_AREA:
-#             approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-#             if len(approx) == 4:
-#                 x, y, w, h = cv2.boundingRect(approx)
-#                 aspect_ratio = float(w) / h
+        if perimeter > 0 and area > MIN_CONTOUR_AREA:
+            circularity = (4 * math.pi * area) / (perimeter * perimeter)
+            if circularity > CIRCULARITY_THRESHOLD:
+                (x, y), radius = cv2.minEnclosingCircle(contour)
+                center = (int(x), int(y))
+                radius = int(radius)
+                circles.append((center, radius))
 
-#                 if SQUARE_ASPECT_RATIO_MIN <= aspect_ratio <= SQUARE_ASPECT_RATIO_MAX:
-#                     cx_square = x + w // 2
-#                     cy_square = y + h // 2
-#                     square_centers.append([cx_square, cy_square])
+                # Draw circle and label
+                cv2.circle(frame, center, radius, (0, 255, 0), 2)
+                cv2.putText(frame, "Circle", (center[0] - 30, center[1] - 10), 
+                          cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-#                 # Draw rectangle around detected square
-#                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-#     return square_centers
+    return circles
 
 
-# def process_circle_groups(circles, frame):
-#     """ Process groups of circles and calculate distance/bearing """
-#     if not circles:
-#         return None
+def detect_squares(contours_black, frame): # Changed from contours to contours_black
+    """ Detect square objects from contours """
+    square_centers = []
 
-#     num_circles = len(circles)
+    for contour in contours_black:
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+
+        if perimeter > 0 and area > MIN_CONTOUR_AREA:
+            approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+            if len(approx) == 4:
+                x, y, w, h = cv2.boundingRect(approx)
+                aspect_ratio = float(w) / h
+
+                if SQUARE_ASPECT_RATIO_MIN <= aspect_ratio <= SQUARE_ASPECT_RATIO_MAX:
+                    cx_square = x + w // 2
+                    cy_square = y + h // 2
+                    square_centers.append([cx_square, cy_square])
+
+                # Draw rectangle around detected square
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+    return square_centers
+
+
+def process_circle_groups(circles, frame):
+    """ Process groups of circles and calculate distance/bearing """
+    if not circles:
+        return None
+
+    num_circles = len(circles)
     
-#     if num_circles == 1:
-#         (x1, y1), r1 = circles[0]
-#         target_x, target_y = int(x1), int(y1)
-#         object_size = r1 * 2
-#         known_size_mm = SINGLE_CIRCLE_SIZE
+    if num_circles == 1:
+        (x1, y1), r1 = circles[0]
+        target_x, target_y = int(x1), int(y1)
+        object_size = r1 * 2
+        known_size_mm = SINGLE_CIRCLE_SIZE
         
-#     elif num_circles == 2:
-#         (x1, y1), _ = circles[0]
-#         (x2, y2), _ = circles[1]
-#         target_x = int((x1 + x2) / 2)
-#         target_y = int((y1 + y2) / 2)
-#         object_size = math.dist((x1, y1), (x2, y2))
-#         known_size_mm = MULTI_CIRCLE_SIZE
+    elif num_circles == 2:
+        (x1, y1), _ = circles[0]
+        (x2, y2), _ = circles[1]
+        target_x = int((x1 + x2) / 2)
+        target_y = int((y1 + y2) / 2)
+        object_size = math.dist((x1, y1), (x2, y2))
+        known_size_mm = MULTI_CIRCLE_SIZE
         
-#     else:  # 3 or more circles
-#         (x1, y1), _ = circles[0]
-#         (x2, y2), _ = circles[1]
-#         (x3, y3), _ = circles[2]
-#         target_x = int((x1 + x2 + x3) / 3)
-#         target_y = int((y1 + y2 + y3) / 3)
+    else:  # 3 or more circles
+        (x1, y1), _ = circles[0]
+        (x2, y2), _ = circles[1]
+        (x3, y3), _ = circles[2]
+        target_x = int((x1 + x2 + x3) / 3)
+        target_y = int((y1 + y2 + y3) / 3)
         
-#         # Average distance between circle pairs
-#         d12 = math.dist((x1, y1), (x2, y2))
-#         d23 = math.dist((x2, y2), (x3, y3))
-#         d31 = math.dist((x3, y3), (x1, y1))
-#         object_size = (d12 + d23 + d31) / 3.0
-#         known_size_mm = MULTI_CIRCLE_SIZE
+        # Average distance between circle pairs
+        d12 = math.dist((x1, y1), (x2, y2))
+        d23 = math.dist((x2, y2), (x3, y3))
+        d31 = math.dist((x3, y3), (x1, y1))
+        object_size = (d12 + d23 + d31) / 3.0
+        known_size_mm = MULTI_CIRCLE_SIZE
 
-#     # Calculate distance and bearing
-#     img_height_px = frame.shape[0]
-#     distance_mm = (FOCAL_LENGTH * known_size_mm * img_height_px) / (object_size * SENSOR_HEIGHT)
-#     distance_m = distance_mm / 1000
+    # Calculate distance and bearing
+    img_height_px = frame.shape[0]
+    distance_mm = (FOCAL_LENGTH * known_size_mm * img_height_px) / (object_size * SENSOR_HEIGHT)
+    distance_m = distance_mm / 1000
 
-#     img_width_px = frame.shape[1]
-#     pixels_from_center = target_x - (img_width_px / 2)
-#     bearing_deg = (CAM_FOV * pixels_from_center) / img_width_px
+    img_width_px = frame.shape[1]
+    pixels_from_center = target_x - (img_width_px / 2)
+    bearing_deg = (CAM_FOV * pixels_from_center) / img_width_px
 
-#     # Add text annotations
-#     cv2.putText(frame, f"Distance: {distance_m:.2f} m", (target_x - 40, target_y + 90),
-#                cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-#     cv2.putText(frame, f"Bearing: {bearing_deg:.1f} degrees", (target_x - 40, target_y + 120),
-#                cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+    # Add text annotations
+    cv2.putText(frame, f"Distance: {distance_m:.2f} m", (target_x - 40, target_y + 90),
+               cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+    cv2.putText(frame, f"Bearing: {bearing_deg:.1f} degrees", (target_x - 40, target_y + 120),
+               cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
-#     print(f"Detected: {num_circles} circle(s), Distance = {distance_m:.2f} m, Bearing = {bearing_deg:.1f} degrees")
+    # print(f"Detected: {num_circles} circle(s), Distance = {distance_m:.2f} m, Bearing = {bearing_deg:.1f} degrees")
 
-#     return distance_m, bearing_deg
+    return distance_m, bearing_deg
 
 
 # def simple_cluster_squares(square_centers, max_distance=100):
@@ -205,513 +205,519 @@
 #     return groups
 
 
-# def process_square_groups(square_centers, frame):
-#     """ Process groups of squares and calculate distance/bearing """
-#     if not square_centers:
-#         return None
+def process_square_groups(square_centers, frame):
+    """ Process groups of squares and calculate distance/bearing """
+    if not square_centers:
+        return None
     
-#     # Cluster squares based on proximity
-#     groups = simple_cluster_squares(square_centers, max_distance=100)
+    # Cluster squares based on proximity
+    # groups = simple_cluster_squares(square_centers, max_distance=100)
 
-#     # square_centers_array = np.array(square_centers)
-#     # clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
-#     # labels = clustering.labels_
+    square_centers_array = np.array(square_centers)
+    clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
+    labels = clustering.labels_
     
-#     for group_id, members in enumerate(groups):
-#         members_array = np.array(members)
-#         group_center_x = np.mean(members_array[:, 0])
-#         group_center_y = np.mean(members_array[:, 1])
+    for group_id in np.unique(labels):
+        members_array = square_centers_array[labels == group_id]
+        group_center_x = np.mean(members_array[:, 0])
+        group_center_y = np.mean(members_array[:, 1])
 
-#         # Determine platform type based on number of squares
-#         num_squares = len(members)
-#         if num_squares == 1:
-#             group_label = "Platform 1"
-#         elif num_squares == 2:
-#             group_label = "Platform 2"
-#         elif num_squares == 3:
-#             group_label = "Platform 3"
-#         else:
-#             group_label = f"Group: {num_squares} squares"
+        # Determine platform type based on number of squares
+        num_squares = len(members_array)
+        if num_squares == 1:
+            group_label = "Platform 1"
+        elif num_squares == 2:
+            group_label = "Platform 2"
+        elif num_squares == 3:
+            group_label = "Platform 3"
+        else:
+            group_label = f"Group: {num_squares} squares"
 
-#         # Draw group visualization
-#         cv2.putText(frame, group_label, (int(group_center_x) - 50, int(group_center_y) - 110),
-#                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-#         cv2.circle(frame, (int(group_center_x), int(group_center_y)), 10, (255, 0, 0), 2)
+        # Draw group visualization
+        cv2.putText(frame, group_label, (int(group_center_x) - 50, int(group_center_y) - 110),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        cv2.circle(frame, (int(group_center_x), int(group_center_y)), 10, (255, 0, 0), 2)
 
-#         # Calculate distance and bearing for the group
-#         bbox_w, bbox_h = SQUARE_SIZE, SQUARE_SIZE
-#         _, _, distance_m, bearing_deg = compute_distance_and_bearing(
-#             (group_center_x - bbox_w/2, group_center_y - bbox_h/2, bbox_w, bbox_h),
-#             frame.shape,
-#             PLATFORM_SPACING
-#         )
+        # Calculate distance and bearing for the group
+        bbox_w, bbox_h = SQUARE_SIZE, SQUARE_SIZE
+        _, _, distance_m, bearing_deg = compute_distance_and_bearing(
+            (group_center_x - bbox_w/2, group_center_y - bbox_h/2, bbox_w, bbox_h),
+            frame.shape,
+            PLATFORM_SPACING
+        )
 
-#         # Add distance/bearing text
-#         cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
-#                    (int(group_center_x) - 80, int(group_center_y) + 40),
-#                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        # Add distance/bearing text
+        cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
+                   (int(group_center_x) - 80, int(group_center_y) + 40),
+                   cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-#         return distance_m, bearing_deg
+        return distance_m, bearing_deg
 
-#     return None
+    return None
 
-# def camera_operation():
-#     """ Main camera operation function - maintains original interface for backwards compatibility """
-#     # Initialize return variables
-#     items_rb = []
-#     packing_station_rb = []
-#     obstacles_rb = []
-#     row_marker_rb = []
-#     shelf_rb = []
-#     picking_station_rb = []
-#     debug_mode = False
+def camera_operation():
+    """ Main camera operation function - maintains original interface for backwards compatibility """
+    # Initialize return variables
+    items_rb = []
+    packing_station_rb = []
+    obstacles_rb = []
+    row_marker_rb = []
+    shelf_rb = []
+    picking_station_rb = []
+    debug_mode = False
 
-#     print("Camera operation started. Press 'q' to quit, 'd' to toggle debug mode.")
+    print("Camera operation started. Press 'q' to quit, 'd' to toggle debug mode.")
 
-#     while True:
-#         # Capture and preprocess frame
-#         frame = frame_cap.read()[1]
-
-#         frame = cv2.resize(frame, (320, 240))
-#         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
-#         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-#         # Create color masks
-#         mask_black = cv2.inRange(hsv, lower_black_pick, upper_black_pick) | cv2.inRange(hsv, lower_black_aisle, upper_black_aisle)
-#         mask_orange = cv2.inRange(hsv, lower_orange1, upper_orange1) | cv2.inRange(hsv, lower_orange2, upper_orange2)
-#         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
-#         mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
-#         mask_white = cv2.inRange(hsv, lower_white, upper_white)
-#         mask_green = cv2.inRange(hsv, lower_green, upper_green)
-
-#         colour_masks = {
-#             "Object":   (mask_orange,   (0, 140, 255),  70),
-#             "Platform": (mask_yellow,   (0, 255, 255),  120),
-#             "Shelf":    (mask_blue,     (255, 0, 0),    150),
-#             "Walls":    (mask_white,    (255, 255, 255), 500),
-#             "Obstacles":(mask_green,    (0, 255, 0),    200)
-#         }
-
-
-#         for label, (mask, draw_colour, known_size_mm) in colour_masks.items():
-#             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#             for contour in contours:
-#                 if cv2.contourArea(contour) > 500:
-#                     cv2.drawContours(frame, [contour], -1, draw_colour, 2)
-#                     x, y, w, h = cv2.boundingRect(contour)
-
-#                     M = cv2.moments(contour)
-#                     if M["m00"] > 0:
-#                         cx = int(M["m10"]/M["m00"])
-#                         cy = int(M["m01"]/M["m00"])
-#                         cv2.putText(frame, label, (cx-30, cy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, draw_colour, 2)
-        
-#                     # ===== DISTANCE AND BEARING =====
-#                     _, _, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
-#                     text = f"{label}: {distance_m:.2f} m, {bearing_deg:.1f} degrees"
-#                     cv2.putText(frame, text, (x+w+5, y+h-5), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
-
-#         # ===== RETURN VARIABLES FOR COLOR DETECTION =====
-#         if label == "Platform":
-#             packing_station_rb.append((distance_m, bearing_deg))
-#         elif label == "Shelf":
-#             shelf_rb.append((distance_m, bearing_deg))
-
-#         # Find contours in black mask
-#         contours_black, _ = cv2.findContours(mask_black, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-#         # Detect circles first
-#         circles = detect_circles(contours_black, frame)
-#         circle_count = len(circles)
-
-#         # Only detect squares if no circles found
-#         square_centers = []
-#         square_count = 0
-#         if circle_count == 0:
-#             square_centers = detect_squares(contours_black, frame)
-#             square_count = len(square_centers)
-
-#         # Process circle groups for row markers
-#         if circles:
-#             circle_result = process_circle_groups(circles, frame)
-#             if circle_result:
-#                 distance_m, bearing_deg = circle_result
-#                 if len(circles) == 1:
-#                     row_marker_rb = [(distance_m, bearing_deg), None, None]
-#                 elif len(circles) == 2:
-#                     row_marker_rb = [None, (distance_m, bearing_deg), None]
-#                 elif len(circles) >= 3:
-#                     row_marker_rb = [None, None, (distance_m, bearing_deg)]
-
-#         # Process square groups for picking stations
-#         if square_centers:
-#             square_result = process_square_groups(square_centers, frame)
-#             if square_result:
-#                 distance_m, bearing_deg = square_result
-#                 if len(square_centers) == 1:
-#                     picking_station_rb = [(distance_m, bearing_deg), None, None]
-#                 elif len(square_centers) == 2:
-#                     picking_station_rb = [None, (distance_m, bearing_deg), None]
-#                 elif len(square_centers) >= 3:
-#                     picking_station_rb = [None, None, (distance_m, bearing_deg)]
-
-#         # Add shape count overlay
-#         if circle_count > 0 or square_count > 0:
-#             text = f"Circles: {circle_count}" if circle_count > 0 else f"Squares: {square_count}"
-#             # Add black outline for better visibility
-#             cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
-#             cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
-
-#         # Display results
-#         cv2.imshow("Frame", frame)
-#         if debug_mode:
-#             combined_mask = mask_orange | mask_yellow | mask_blue | mask_black
-#             cv2.imshow("Debug Masks", combined_mask)
-
-#         # Handle keyboard input
-#         key = cv2.waitKey(1) & 0xFF
-#         if key == ord('q'):
-#             break
-#         elif key == ord('d'):
-#             debug_mode = not debug_mode
-#             print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
-#             if not debug_mode:
-#                 cv2.destroyWindow("Debug Masks")
-
-#     cv2.destroyAllWindows()
-#     return (items_rb, packing_station_rb, obstacles_rb, row_marker_rb, shelf_rb, picking_station_rb)
-
-# if __name__ == "__main__":
-#     camera_operation()
-
-# ----------------------------------------------
-# ===== IMPORT PACKAGES USED IN SIMULATION =====
-# ----------------------------------------------
-import cv2
-import numpy as np
-import math
-from sklearn.cluster import DBSCAN
-
-# ---------------------------------------
-# ===== CAMERA AND SYSTEM CONSTANTS =====
-# ---------------------------------------
-picam2 = cv2.VideoCapture(0)
-
-# Camera Configuration Constants (mm)
-FOCAL_LENGTH = 2.9
-SENSOR_HEIGHT = 2.4
-SENSOR_WIDTH = 3.2
-CAM_FOV = 140  # degrees
-
-# -----------------------------------------
-# ===== HSV COLOR MODEL, COLOR RANGES =====
-# -----------------------------------------
-# SHAPE
-lowerBlack      = np.array([0, 0, 0])
-upperBlack      = np.array([180, 255, 50])
-
-# OBJECT
-lowerOrange1    = np.array([0, 120, 80])
-upperOrange1    = np.array([15, 255, 255])
-lowerOrange2    = np.array([170, 120, 80])
-upperOrange2    = np.array([180, 255, 255])
-
-# PLATFORM
-lowerYellow     = np.array([20, 152, 149])
-upperYellow     = np.array([40, 255, 255])
-
-# SHELF
-lowerBlue       = np.array([60, 50, 60])
-upperBlue       = np.array([150, 255, 255])
-
-# WAREHOUSE WALLS
-lowerWhite      = np.array([0, 0, 150])
-upperWhite      = np.array([80, 55, 255])
-
-# -----------------------------
-# ===== INITIATE PICAMERA =====
-# -----------------------------
-# picam2 = cv2.VideoCapture(0)
-# picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
-# picam2.start()
-
-debug_mode = False
-
-distance_value = False
-
-# ------------------------------------------------------
-# ===== CREATING A "DISTANCE-AND-BEARING" FUNCTION =====
-# ------------------------------------------------------
-# known_size_mm refers to a known size (for the black shapes)
-# for a more accurate calculation
-def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
-    (x, y, w, h) = bbox
-    target_x = int(x + w/2)
-    target_y = int(y + h/2)
-
-    object_pixel_size = max(w, h)
-    image_height_px = frame_shape[0]
-    distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
-    distance_m  = distance_mm / 1000
-
-    image_width_px = frame_shape[1]
-    pixels_from_center = target_x - (image_width_px / 2)
-    bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
-
-    return target_x, target_y, distance_m, bearing_deg
-
-# ===================================
-# ===== DETECTED VARIABLES LIST =====
-# ===================================
-def detect_variables():
-    itemsRB = []
-    packingStationRB = []
-    obstaclesRB = []
-    rowMarkerRB = []
-    shelfRB = []
-    pickingStationRB = []
-
-
-    # =========================================
-    # ===== STARTING MAIN SIMULATION LOOP =====
-    # =========================================
     while True:
+        # Capture and preprocess frame
+        frame = frame_cap.read()[1]
 
-        # ---------------------------------------------
-        # ===== RETRIEVED PICAMERA IMAGE SETTINGS =====
-        # ---------------------------------------------
-        frame = picam2.read()[1]
-
+        frame = cv2.resize(frame, (320, 240))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
-        frame = cv2.resize(frame, (640, 480))
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        
-        # ------------------------------------------------
-        # ===== MASKING ALREADY DEFINED COLOR RANGES =====
-        # ------------------------------------------------
-        mask_orange = cv2.inRange(hsv, lowerOrange1, upperOrange1) | cv2.inRange(hsv, lowerOrange2, upperOrange2)
-        mask_yellow = cv2.inRange(hsv, lowerYellow, upperYellow)
-        mask_blue   = cv2.inRange(hsv, lowerBlue, upperBlue)
-        mask_black  = cv2.inRange(hsv, lowerBlack, upperBlack)
-        mask_white  = cv2.inRange(hsv, lowerWhite, upperWhite)
 
-        color_masks = {
-                "Object":   (mask_orange,   (0, 140, 255),  70),
-                "Platform": (mask_yellow,   (0, 255, 255),  120),
-                "Shelf":    (mask_blue,     (255, 0, 0),    150),
-                "Walls":    (mask_white,    (255, 255, 255), 500)
+        # Create color masks
+        mask_black_pick = cv2.inRange(hsv, lower_black_pick, upper_black_pick)
+        mask_black_aisle = cv2.inRange(hsv, lower_black_aisle, upper_black_aisle)
+        # mask_black = cv2.inRange(hsv, lower_black_aisle, upper_black_aisle)       
+        mask_orange = cv2.inRange(hsv, lower_orange1, upper_orange1) | cv2.inRange(hsv, lower_orange2, upper_orange2)
+        mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
+        mask_white = cv2.inRange(hsv, lower_white, upper_white)
+        mask_green = cv2.inRange(hsv, lower_green, upper_green)
+
+        colour_masks = {
+            "Object":   (mask_orange,   (0, 140, 255),  70),
+            "Platform": (mask_yellow,   (0, 255, 255),  120),
+            "Shelf":    (mask_blue,     (255, 0, 0),    150),
+            "Walls":    (mask_white,    (255, 255, 255), 500),
+            "Obstacles":(mask_green,    (0, 255, 0),    200)
         }
 
-        # -------------------------------------------------------------------
-        # ===== PROCESS SIMULATION FOR (ORANGE, YELLOW AND BLUE) COLORS =====
-        # -------------------------------------------------------------------
-        for label, (mask, draw_color, known_size_mm) in color_masks.items():
+
+        for label, (mask, draw_colour, known_size_mm) in colour_masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
                 if cv2.contourArea(contour) > 500:
-                    cv2.drawContours(frame, [contour], -1, draw_color, 2)
+                    cv2.drawContours(frame, [contour], -1, draw_colour, 2)
                     x, y, w, h = cv2.boundingRect(contour)
 
                     M = cv2.moments(contour)
                     if M["m00"] > 0:
                         cx = int(M["m10"]/M["m00"])
                         cy = int(M["m01"]/M["m00"])
-                        cv2.putText(frame, label, (cx-30, cy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, draw_color, 2)
+                        cv2.putText(frame, label, (cx-30, cy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, draw_colour, 2)
         
                     # ===== DISTANCE AND BEARING =====
-                    target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
+                    _, _, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
                     text = f"{label}: {distance_m:.2f} m, {bearing_deg:.1f} degrees"
                     cv2.putText(frame, text, (x+w+5, y+h-5), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
 
         # ===== RETURN VARIABLES FOR COLOR DETECTION =====
         if label == "Platform":
-            packingStationRB.append((distance_m, bearing_deg))
+            packing_station_rb.append((distance_m, bearing_deg))
         elif label == "Shelf":
-            shelfRB.append((distance_m, bearing_deg))
+            shelf_rb.append((distance_m, bearing_deg))
 
-        # -------------------------------------------------
-        # ===== PROCESS SIMULATION FOR (BLACK) SHAPES =====
-        # -------------------------------------------------
-        contours_black, _ = cv2.findContours(mask_black, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        circle_count, square_count = 0, 0
-        circles = []
+        # Find contours in black mask
+        contours_black_aisle, _ = cv2.findContours(mask_black_aisle, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours_black_pick, _ = cv2.findContours(mask_black_pick, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Detect circles first
+        circles = detect_circles(contours_black_aisle, frame)
+        circle_count = len(circles)
+
+        # Only detect squares if no circles found
         square_centers = []
-
-        # ===== CIRLCE DETECTION =====
-        for contour in contours_black:
-            area = cv2.contourArea(contour)
-            perimeter = cv2.arcLength(contour, True)
-
-            if perimeter > 0 and area > 200:
-                circularity = (4 * math.pi * area) / (perimeter * perimeter)
-                if circularity > 0.85: # a square is about 0.785
-                    (x, y), radius = cv2.minEnclosingCircle(contour)
-                    center = (int(x), int(y))
-                    radius = int(radius)
-                    circles.append((center, radius))
-                    circle_count += 1
-
-                    cv2.circle(frame, center, radius, (0, 255, 0), 2)
-                    cv2.putText(frame, "Circle", (center[0]-30, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
-        # ===== SQUARE DETECTION =====
+        square_count = 0
         if circle_count == 0:
-                for contour in contours_black:
-                    area = cv2.contourArea(contour)
-                    perimeter = cv2.arcLength(contour, True)
+            square_centers = detect_squares(contours_black_pick, frame)
+            square_count = len(square_centers)
 
-                    if perimeter > 0 and area > 200:
-                        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True) #0.04 * perimeter before, ( COULD TRY: approx = "cv2.approxPolyDP(contour, 0.015 * perimeter, True)" )
-                        if len(approx) == 4:
-                            x, y, w, h = cv2.boundingRect(approx)
-                            aspect_ratio = float(w) / h
+        # Process circle groups for row markers
+        if circles:
+            circle_result = process_circle_groups(circles, frame)
+            if circle_result:
+                distance_m, bearing_deg = circle_result
+                if len(circles) == 1:
+                    row_marker_rb = [(distance_m, bearing_deg), None, None]
+                elif len(circles) == 2:
+                    row_marker_rb = [None, (distance_m, bearing_deg), None]
+                elif len(circles) >= 3:
+                    row_marker_rb = [None, None, (distance_m, bearing_deg)]
 
-                            if 0.9 <= aspect_ratio <= 1.1: #approximated a square
-                                square_count += 1
-                                cx_s, cy_s = x + w // 2, y + h // 2
-                                square_centers.append([cx_s, cy_s])
+        # Process square groups for picking stations
+        if square_centers:
+            square_result = process_square_groups(square_centers, frame)
+            if square_result:
+                distance_m, bearing_deg = square_result
+                if len(square_centers) == 1:
+                    picking_station_rb = [(distance_m, bearing_deg), None, None]
+                elif len(square_centers) == 2:
+                    picking_station_rb = [None, (distance_m, bearing_deg), None]
+                elif len(square_centers) >= 3:
+                    picking_station_rb = [None, None, (distance_m, bearing_deg)]
 
-                                # ----- DISTANCE AND BEARING FOR SQUARE -----
-                                known_size_square_mm = 50
-                                target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_square_mm)
-
-                                #cv2.putText(frame, f"Square: {distance_m:.2f} m, {bearing_deg:.1f} deg",
-                                #            (x, y + h + 20), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-
-                            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2) # rectangle around each square
-                            #cv2.putText(frame, "Square", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
-                # ----- GROUPING SQUARES FUNCTION -----
-                if square_centers:
-                    square_centers = np.array(square_centers)
-
-                    clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers)
-                    labels = clustering.labels_
-
-                    for group_id in np.unique(labels):
-                        members = square_centers[labels == group_id]
-
-                        gx_s, gy_s = np.mean(members[:, 0]), np.mean(members[:, 1])
-
-                        if len(members) == 1:
-                            group_label = "Platform 1"
-                        elif len(members) == 2:
-                            group_label = "Platform 2"
-                        elif len(members) == 3:
-                            group_label = "Platform 3"
-                        else:
-                            group_label = f"Group: {len(members)} squares"
-
-                        cv2.putText(frame, group_label, (int(gx_s) - 50, int(gy_s) - 110),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-                        
-                        # ===== RETURN VARIABLES IN LIST =====
-                        if len(members) == 1:
-                            pickingStationRB = [(distance_m, bearing_deg), None, None]
-                        elif len(members) == 2:
-                            pickingStationRB = [None, (distance_m, bearing_deg), None]
-                        elif len(members) == 3:
-                            pickingStationRB = [None, None, (distance_m, bearing_deg)]
-
-                        for (cx_s, cy_s) in members:
-                            cv2.circle(frame, (int(gx_s), int(gy_s)), 10, (255, 0, 0), 2)
-
-                        # ----- DISTANCE AND BEARING -----
-                        known_size_platform_mm = 300 #300mm between each centerpoint in platform group
-                        bbox_w, bbox_h = 50, 50 #50x50mm squares
-                        target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing(
-                            (gx_s - bbox_w/2, gy_s - bbox_h/2, bbox_w, bbox_h),
-                            frame.shape,
-                            known_size_platform_mm
-                        )
-
-                        # add text
-                        cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
-                                    (int(gx_s) - 80, int(gy_s) + 40),
-                                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-
-        # ===== DISTANCE AND BEARING FOR CIRCLE DETECTION =====
-        if len(circles) > 0:
-
-            if len(circles) == 1:
-                (x1, y1), r1 = circles[0]
-
-                target_x, target_y = int(x1), int(y1)
-                object_pixel_size = r1 * 2
-                known_size_mm = 70
-
-            elif len(circles) == 2:
-                (x1, y1), _ = circles[0]
-                (x2, y2), _ = circles[1]
-
-                target_x = int((x1 + x2) / 2)
-                target_y = int((y1 + y2) / 2)
-                pixel_dist = math.dist((x1, y1), (x2, y2))
-                object_pixel_size = pixel_dist
-                known_size_mm =  120
- 
-            else:
-                (x1, y1), _ = circles[0]
-                (x2, y2), _ = circles[1]
-                (x3, y3), _ = circles[2]
-
-                target_x = int((x1 + x2 + x3) / 3)
-                target_y = int((y1 + y2 + y3) / 3)
-                d12 = math.dist((x1, y1), (x2, y2))
-                d23 = math.dist((x2, y2), (x3, y3))
-                d31 = math.dist((x3, y3), (x1, y1))
-                object_pixel_size = (d12 + d23 + d31) / 3.0
-                known_size_mm = 120
-            
-            # ===== DISTANCE =====
-            image_height_px = frame.shape[0]
-            distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
-            distance_m = distance_mm / 1000
-
-            # ===== BEARING =====
-            image_width_px = frame.shape[1]
-            pixels_from_center = target_x - (image_width_px / 2)
-            bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
-
-            # ===== STORE VALUES IN LIST =====
-            if len(circles) == 1:
-                rowMarkerRB = [(distance_m, bearing_deg), None, None]
-            elif len(circles) == 2:
-                rowMarkerRB = [None, (distance_m, bearing_deg), None]
-            elif len(circles) == 3:
-                rowMarkerRB = [None, None, (distance_m, bearing_deg)]
-
-            cv2.putText(frame, f"Distance: {distance_m:.2f} m", (target_x - 40, target_y + 90),
-                cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            cv2.putText(frame, f"Bearing: {bearing_deg:.1f} degrees", (target_x - 40, target_y + 120),
-                cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
-            
-            # print
-            print(f"Detected: {len(circles)} circle(s), Distance = {distance_m:.2f} m, Bearing = {bearing_deg:.1f} degrees")
-
-        # ===== DISPLAY COUNT OF DETECTED SHAPES =====
+        # Add shape count overlay
         if circle_count > 0 or square_count > 0:
-            if circle_count > 0:
-                cv2.putText(frame, f"Black circles: {circle_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
-                cv2.putText(frame, f"Black circles: {circle_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
-            if square_count > 0:
-                cv2.putText(frame, f"Black squares: {square_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
-                cv2.putText(frame, f"Black squares: {square_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+            text = f"Circles: {circle_count}" if circle_count > 0 else f"Squares: {square_count}"
+            # Add black outline for better visibility
+            cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
+            cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
 
-        # ===== SHOWING RESULTS =====
+        # Display results
         cv2.imshow("Frame", frame)
         if debug_mode:
-            combined_mask = mask_orange | mask_yellow | mask_blue | mask_black
-            cv2.imshow("Mask", combined_mask)
+            combined_mask = mask_orange | mask_yellow | mask_blue | mask_black_pick | mask_black_aisle | mask_white | mask_green
+            cv2.imshow("Debug Masks", combined_mask)
 
+        # Handle keyboard input
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
         elif key == ord('d'):
             debug_mode = not debug_mode
-            print(f"Debug mode: {debug_mode}")
+            print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
+            if not debug_mode:
+                cv2.destroyWindow("Debug Masks")
 
-    #picam2.close()
     cv2.destroyAllWindows()
-    return (itemsRB, packingStationRB, obstaclesRB, rowMarkerRB, shelfRB, pickingStationRB)
+    return (items_rb, packing_station_rb, obstacles_rb, row_marker_rb, shelf_rb, picking_station_rb)
+
+if __name__ == "__main__":
+    camera_operation()
+
+# # ----------------------------------------------
+# # ===== IMPORT PACKAGES USED IN SIMULATION =====
+# # ----------------------------------------------
+# import cv2
+# import numpy as np
+# import math
+# from sklearn.cluster import DBSCAN
+
+# # ---------------------------------------
+# # ===== CAMERA AND SYSTEM CONSTANTS =====
+# # ---------------------------------------
+# picam2 = cv2.VideoCapture(0)
+
+# # Camera Configuration Constants (mm)
+# FOCAL_LENGTH = 2.9
+# SENSOR_HEIGHT = 2.4
+# SENSOR_WIDTH = 3.2
+# CAM_FOV = 140  # degrees
+
+# # -----------------------------------------
+# # ===== HSV COLOR MODEL, COLOR RANGES =====
+# # -----------------------------------------
+# # SHAPE
+# lowerBlack      = np.array([0, 0, 0])
+# upperBlack      = np.array([180, 255, 50])
+
+# # OBJECT
+# lowerOrange1    = np.array([0, 120, 80])
+# upperOrange1    = np.array([15, 255, 255])
+# lowerOrange2    = np.array([170, 120, 80])
+# upperOrange2    = np.array([180, 255, 255])
+
+# # PLATFORM
+# lowerYellow     = np.array([20, 152, 149])
+# upperYellow     = np.array([40, 255, 255])
+
+# # SHELF
+# lowerBlue       = np.array([60, 50, 60])
+# upperBlue       = np.array([150, 255, 255])
+
+# # WAREHOUSE WALLS
+# lowerWhite      = np.array([0, 0, 150])
+# upperWhite      = np.array([80, 55, 255])
+
+# # -----------------------------
+# # ===== INITIATE PICAMERA =====
+# # -----------------------------
+# # picam2 = cv2.VideoCapture(0)
+# # picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
+# # picam2.start()
+
+# #debug_mode = False
+
+# distance_value = False
+
+# # ------------------------------------------------------
+# # ===== CREATING A "DISTANCE-AND-BEARING" FUNCTION =====
+# # ------------------------------------------------------
+# # known_size_mm refers to a known size (for the black shapes)
+# # for a more accurate calculation
+# def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
+#     (x, y, w, h) = bbox
+#     target_x = int(x + w/2)
+#     target_y = int(y + h/2)
+
+#     object_pixel_size = max(w, h)
+#     image_height_px = frame_shape[0]
+#     distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
+#     distance_m  = distance_mm / 1000
+
+#     image_width_px = frame_shape[1]
+#     pixels_from_center = target_x - (image_width_px / 2)
+#     bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
+
+#     return target_x, target_y, distance_m, bearing_deg
+
+# # ===================================
+# # ===== DETECTED VARIABLES LIST =====
+# # ===================================
+# def detect_variables():
+#     itemsRB = []
+#     packingStationRB = []
+#     obstaclesRB = []
+#     rowMarkerRB = []
+#     shelfRB = []
+#     pickingStationRB = []
+
+
+#     # =========================================
+#     # ===== STARTING MAIN SIMULATION LOOP =====
+#     # =========================================
+#     while True:
+
+#         # ---------------------------------------------
+#         # ===== RETRIEVED PICAMERA IMAGE SETTINGS =====
+#         # ---------------------------------------------
+#         frame = picam2.read()[1]
+
+#         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
+#         frame = cv2.resize(frame, (640, 480))
+#         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+#         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
+#         # ------------------------------------------------
+#         # ===== MASKING ALREADY DEFINED COLOR RANGES =====
+#         # ------------------------------------------------
+#         mask_orange = cv2.inRange(hsv, lowerOrange1, upperOrange1) | cv2.inRange(hsv, lowerOrange2, upperOrange2)
+#         mask_yellow = cv2.inRange(hsv, lowerYellow, upperYellow)
+#         mask_blue   = cv2.inRange(hsv, lowerBlue, upperBlue)
+#         mask_black  = cv2.inRange(hsv, lowerBlack, upperBlack)
+#         mask_white  = cv2.inRange(hsv, lowerWhite, upperWhite)
+
+#         color_masks = {
+#                 "Object":   (mask_orange,   (0, 140, 255),  70),
+#                 "Platform": (mask_yellow,   (0, 255, 255),  120),
+#                 "Shelf":    (mask_blue,     (255, 0, 0),    150),
+#                 "Walls":    (mask_white,    (255, 255, 255), 500)
+#         }
+
+#         # -------------------------------------------------------------------
+#         # ===== PROCESS SIMULATION FOR (ORANGE, YELLOW AND BLUE) COLORS =====
+#         # -------------------------------------------------------------------
+#         for label, (mask, draw_color, known_size_mm) in color_masks.items():
+#             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#             for contour in contours:
+#                 if cv2.contourArea(contour) > 500:
+#                     cv2.drawContours(frame, [contour], -1, draw_color, 2)
+#                     x, y, w, h = cv2.boundingRect(contour)
+
+#                     M = cv2.moments(contour)
+#                     if M["m00"] > 0:
+#                         cx = int(M["m10"]/M["m00"])
+#                         cy = int(M["m01"]/M["m00"])
+#                         cv2.putText(frame, label, (cx-30, cy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, draw_color, 2)
+        
+#                     # ===== DISTANCE AND BEARING =====
+#                     target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
+#                     text = f"{label}: {distance_m:.2f} m, {bearing_deg:.1f} degrees"
+#                     cv2.putText(frame, text, (x+w+5, y+h-5), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
+
+#         # ===== RETURN VARIABLES FOR COLOR DETECTION =====
+#         if label == "Platform":
+#             packingStationRB.append((distance_m, bearing_deg))
+#         elif label == "Shelf":
+#             shelfRB.append((distance_m, bearing_deg))
+
+#         # -------------------------------------------------
+#         # ===== PROCESS SIMULATION FOR (BLACK) SHAPES =====
+#         # -------------------------------------------------
+#         contours_black, _ = cv2.findContours(mask_black, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#         circle_count, square_count = 0, 0
+#         circles = []
+#         square_centers = []
+
+#         # ===== CIRLCE DETECTION =====
+#         for contour in contours_black:
+#             area = cv2.contourArea(contour)
+#             perimeter = cv2.arcLength(contour, True)
+
+#             if perimeter > 0 and area > 200:
+#                 circularity = (4 * math.pi * area) / (perimeter * perimeter)
+#                 if circularity > 0.85: # a square is about 0.785
+#                     (x, y), radius = cv2.minEnclosingCircle(contour)
+#                     center = (int(x), int(y))
+#                     radius = int(radius)
+#                     circles.append((center, radius))
+#                     circle_count += 1
+
+#                     cv2.circle(frame, center, radius, (0, 255, 0), 2)
+#                     cv2.putText(frame, "Circle", (center[0]-30, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+#         # ===== SQUARE DETECTION =====
+#         if circle_count == 0:
+#                 for contour in contours_black:
+#                     area = cv2.contourArea(contour)
+#                     perimeter = cv2.arcLength(contour, True)
+
+#                     if perimeter > 0 and area > 200:
+#                         approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True) #0.04 * perimeter before, ( COULD TRY: approx = "cv2.approxPolyDP(contour, 0.015 * perimeter, True)" )
+#                         if len(approx) == 4:
+#                             x, y, w, h = cv2.boundingRect(approx)
+#                             aspect_ratio = float(w) / h
+
+#                             if 0.9 <= aspect_ratio <= 1.1: #approximated a square
+#                                 square_count += 1
+#                                 cx_s, cy_s = x + w // 2, y + h // 2
+#                                 square_centers.append([cx_s, cy_s])
+
+#                                 # ----- DISTANCE AND BEARING FOR SQUARE -----
+#                                 known_size_square_mm = 50
+#                                 target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_square_mm)
+
+#                                 #cv2.putText(frame, f"Square: {distance_m:.2f} m, {bearing_deg:.1f} deg",
+#                                 #            (x, y + h + 20), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+#                             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2) # rectangle around each square
+#                             #cv2.putText(frame, "Square", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+#                 # ----- GROUPING SQUARES FUNCTION -----
+#                 if square_centers:
+#                     square_centers = np.array(square_centers)
+
+#                     clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers)
+#                     labels = clustering.labels_
+
+#                     for group_id in np.unique(labels):
+#                         members = square_centers[labels == group_id]
+
+#                         gx_s, gy_s = np.mean(members[:, 0]), np.mean(members[:, 1])
+
+#                         if len(members) == 1:
+#                             group_label = "Platform 1"
+#                         elif len(members) == 2:
+#                             group_label = "Platform 2"
+#                         elif len(members) == 3:
+#                             group_label = "Platform 3"
+#                         else:
+#                             group_label = f"Group: {len(members)} squares"
+
+#                         cv2.putText(frame, group_label, (int(gx_s) - 50, int(gy_s) - 110),
+#                                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                        
+#                         # ===== RETURN VARIABLES IN LIST =====
+#                         if len(members) == 1:
+#                             pickingStationRB = [(distance_m, bearing_deg), None, None]
+#                         elif len(members) == 2:
+#                             pickingStationRB = [None, (distance_m, bearing_deg), None]
+#                         elif len(members) == 3:
+#                             pickingStationRB = [None, None, (distance_m, bearing_deg)]
+
+#                         for (cx_s, cy_s) in members:
+#                             cv2.circle(frame, (int(gx_s), int(gy_s)), 10, (255, 0, 0), 2)
+
+#                         # ----- DISTANCE AND BEARING -----
+#                         known_size_platform_mm = 300 #300mm between each centerpoint in platform group
+#                         bbox_w, bbox_h = 50, 50 #50x50mm squares
+#                         target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing(
+#                             (gx_s - bbox_w/2, gy_s - bbox_h/2, bbox_w, bbox_h),
+#                             frame.shape,
+#                             known_size_platform_mm
+#                         )
+
+#                         # add text
+#                         cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
+#                                     (int(gx_s) - 80, int(gy_s) + 40),
+#                                     cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+#         # ===== DISTANCE AND BEARING FOR CIRCLE DETECTION =====
+#         if len(circles) > 0:
+
+#             if len(circles) == 1:
+#                 (x1, y1), r1 = circles[0]
+
+#                 target_x, target_y = int(x1), int(y1)
+#                 object_pixel_size = r1 * 2
+#                 known_size_mm = 70
+
+#             elif len(circles) == 2:
+#                 (x1, y1), _ = circles[0]
+#                 (x2, y2), _ = circles[1]
+
+#                 target_x = int((x1 + x2) / 2)
+#                 target_y = int((y1 + y2) / 2)
+#                 pixel_dist = math.dist((x1, y1), (x2, y2))
+#                 object_pixel_size = pixel_dist
+#                 known_size_mm =  120
+ 
+#             else:
+#                 (x1, y1), _ = circles[0]
+#                 (x2, y2), _ = circles[1]
+#                 (x3, y3), _ = circles[2]
+
+#                 target_x = int((x1 + x2 + x3) / 3)
+#                 target_y = int((y1 + y2 + y3) / 3)
+#                 d12 = math.dist((x1, y1), (x2, y2))
+#                 d23 = math.dist((x2, y2), (x3, y3))
+#                 d31 = math.dist((x3, y3), (x1, y1))
+#                 object_pixel_size = (d12 + d23 + d31) / 3.0
+#                 known_size_mm = 120
+            
+#             # ===== DISTANCE =====
+#             image_height_px = frame.shape[0]
+#             distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
+#             distance_m = distance_mm / 1000
+
+#             # ===== BEARING =====
+#             image_width_px = frame.shape[1]
+#             pixels_from_center = target_x - (image_width_px / 2)
+#             bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
+
+#             # ===== STORE VALUES IN LIST =====
+#             if len(circles) == 1:
+#                 rowMarkerRB = [(distance_m, bearing_deg), None, None]
+#             elif len(circles) == 2:
+#                 rowMarkerRB = [None, (distance_m, bearing_deg), None]
+#             elif len(circles) == 3:
+#                 rowMarkerRB = [None, None, (distance_m, bearing_deg)]
+
+#             cv2.putText(frame, f"Distance: {distance_m:.2f} m", (target_x - 40, target_y + 90),
+#                 cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+#             cv2.putText(frame, f"Bearing: {bearing_deg:.1f} degrees", (target_x - 40, target_y + 120),
+#                 cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+            
+#             # print
+#             print(f"Detected: {len(circles)} circle(s), Distance = {distance_m:.2f} m, Bearing = {bearing_deg:.1f} degrees")
+
+#         # ===== DISPLAY COUNT OF DETECTED SHAPES =====
+#         if circle_count > 0 or square_count > 0:
+#             if circle_count > 0:
+#                 cv2.putText(frame, f"Black circles: {circle_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
+#                 cv2.putText(frame, f"Black circles: {circle_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+#             if square_count > 0:
+#                 cv2.putText(frame, f"Black squares: {square_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
+#                 cv2.putText(frame, f"Black squares: {square_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+
+#         # ===== SHOWING RESULTS =====
+#         cv2.imshow("Frame", frame)
+#         # if debug_mode:
+#         #     combined_mask = mask_orange | mask_yellow | mask_blue | mask_black
+#         #     cv2.imshow("Mask", combined_mask)
+
+#         key = cv2.waitKey(1) & 0xFF
+#         if key == ord('q'):
+#             break
+#         # elif key == ord('d'):
+#         #     debug_mode = not debug_mode
+#         #     print(f"Debug mode: {debug_mode}")
+
+#     #picam2.close()
+#     cv2.destroyAllWindows()
+#     return (itemsRB, packingStationRB, obstaclesRB, rowMarkerRB, shelfRB, pickingStationRB)
+
+# if __name__ == "__main__":
+#     detect_variables()
