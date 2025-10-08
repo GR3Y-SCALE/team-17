@@ -27,8 +27,8 @@ PLATFORM_SPACING = 300
 # HSV Color Ranges
 lower_black_pick = np.array([0, 0, 0])
 upper_black_pick = np.array([180, 255, 50])
-lower_black_aisle = np.array([0, 0, 0])
-upper_black_aisle = np.array([180, 40, 130])
+# lower_black_aisle = np.array([0, 0, 0])
+# upper_black_aisle = np.array([180, 40, 130])
 
 lower_orange1 = np.array([0, 120, 80])
 upper_orange1 = np.array([15, 255, 255])
@@ -216,7 +216,7 @@ def process_square_groups(square_centers, frame):
     clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
     labels = clustering.labels_
     
-    for group_id, members in enumerate(groups):
+    for group_id, members in enumerate(labels):
         members_array = np.array(members)
         group_center_x = np.mean(members_array[:, 0])
         group_center_y = np.mean(members_array[:, 1])
