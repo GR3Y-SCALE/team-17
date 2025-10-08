@@ -395,10 +395,13 @@ from sklearn.cluster import DBSCAN
 # ---------------------------------------
 # ===== CAMERA AND SYSTEM CONSTANTS =====
 # ---------------------------------------
-FOCAL_LENGTH_MM     = 3.04
-SENSOR_HEIGHT_MM    = 2.76
-SENSOR_WIDTH_MM     = 3.68
-HORIZONTAL_FOV_DEG  = 62
+picam2 = cv2.VideoCapture(0)
+
+# Camera Configuration Constants (mm)
+FOCAL_LENGTH = 2.9
+SENSOR_HEIGHT = 2.4
+SENSOR_WIDTH = 3.2
+CAM_FOV = 140  # degrees
 
 # -----------------------------------------
 # ===== HSV COLOR MODEL, COLOR RANGES =====
@@ -428,9 +431,9 @@ upperWhite      = np.array([80, 55, 255])
 # -----------------------------
 # ===== INITIATE PICAMERA =====
 # -----------------------------
-picam2 = cv2.VideoCapture(0)
-#picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
-#picam2.start()
+# picam2 = cv2.VideoCapture(0)
+# picam2.configure(picam2.create_preview_configuration(main={"format": "BGR888"}))
+# picam2.start()
 
 debug_mode = False
 
@@ -448,12 +451,12 @@ def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
 
     object_pixel_size = max(w, h)
     image_height_px = frame_shape[0]
-    distance_mm = (FOCAL_LENGTH_MM * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT_MM)
+    distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
     distance_m  = distance_mm / 1000
 
     image_width_px = frame_shape[1]
     pixels_from_center = target_x - (image_width_px / 2)
-    bearing_deg = (HORIZONTAL_FOV_DEG * pixels_from_center) / image_width_px
+    bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
 
     return target_x, target_y, distance_m, bearing_deg
 
@@ -663,13 +666,13 @@ def detect_variables():
             
             # ===== DISTANCE =====
             image_height_px = frame.shape[0]
-            distance_mm = (FOCAL_LENGTH_MM * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT_MM)
+            distance_mm = (FOCAL_LENGTH * known_size_mm * image_height_px) / (object_pixel_size * SENSOR_HEIGHT)
             distance_m = distance_mm / 1000
 
             # ===== BEARING =====
             image_width_px = frame.shape[1]
             pixels_from_center = target_x - (image_width_px / 2)
-            bearing_deg = (HORIZONTAL_FOV_DEG * pixels_from_center) / image_width_px
+            bearing_deg = (CAM_FOV * pixels_from_center) / image_width_px
 
             # ===== STORE VALUES IN LIST =====
             if len(circles) == 1:
@@ -709,6 +712,6 @@ def detect_variables():
             debug_mode = not debug_mode
             print(f"Debug mode: {debug_mode}")
 
-    picam2.close()
+    #picam2.close()
     cv2.destroyAllWindows()
     return (itemsRB, packingStationRB, obstaclesRB, rowMarkerRB, shelfRB, pickingStationRB)
