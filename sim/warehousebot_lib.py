@@ -538,8 +538,8 @@ class COPPELIA_WarehouseRobot(object):
 		
 		dt_sleep = 0.01                # 10 ms update
 		max_rot_vel = 0.1           # rad/s
-		max_forward_vel = 0.01       # m/s
-		safety_timeout = 10         # seconds
+		max_forward_vel = 0.05       # m/s
+		safety_timeout = 15         # seconds
 
 		# Rotate first (if requested)
 		if rot_degrees != 0:
@@ -558,7 +558,7 @@ class COPPELIA_WarehouseRobot(object):
 			target_distance = start_pose[0] + dist_x #if abs(dist) > 0 else -dist
 			print(f"Driving {'forward' if dist_x > 0 else 'backward'} {dist_x:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
 			self.SetTargetVelocities(max_forward_vel if dist_x > 0 else -max_forward_vel, 0.0)
-			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[0] - target_distance) > 0.0001:
+			while safety_timeout > (time.time() - drive_start_time) and self._get_robot_position()[0] < target_distance if dist_x > 0 else self._get_robot_position()[0] > target_distance:
 				self.UpdateObjectPositions()
 				time.sleep(dt_sleep)
 			print(f"Drive complete, currently: {self._get_robot_position()[0]:.2f} m")
@@ -569,7 +569,7 @@ class COPPELIA_WarehouseRobot(object):
 			target_distance = start_pose[1] + dist_y #if abs(dist) > 0 else -dist
 			print(f"Driving {'forward' if dist_y > 0 else 'backward'} {dist_y:.2f} m from {start_pose[0]:.2f} to {target_distance:.2f} m")
 			self.SetTargetVelocities(max_forward_vel if dist_y > 0 else -max_forward_vel, 0.0)
-			while safety_timeout > (time.time() - drive_start_time) and abs(self._get_robot_position()[1] - target_distance) > 0.0001:
+			while safety_timeout > (time.time() - drive_start_time) and self._get_robot_position()[1] < target_distance if dist_y > 0 else self._get_robot_position()[1] > target_distance:
 				self.UpdateObjectPositions()
 				time.sleep(dt_sleep)
 			print(f"Drive complete, currently: {self._get_robot_position()[1]:.2f} m")
@@ -1751,14 +1751,14 @@ class RobotParameters(object):
 		self.cameraTilt = 0.0                 # tilt angle in radians
 		self.cameraResolutionX = 640          # camera width in pixels
 		self.cameraResolutionY = 480          # camera height in pixels
-		self.cameraPerspectiveAngle = math.pi/3  # field of view angle in radians
+		self.cameraPerspectiveAngle = 2.44  # field of view angle in radians 140 degrees
 		
 		# Detection Parameters
 		self.maxItemDetectionDistance = 1.0      # max distance to detect items in m
-		self.maxPackingBayDetectionDistance = 2.5  # max distance to detect packing bay in m
-		self.maxObstacleDetectionDistance = 1.5  # max distance to detect obstacles in m
-		self.maxRowMarkerDetectionDistance = 2.5  # max distance to detect row markers in m
-		self.maxShelfDetectionDistance = 2.0     # max distance to detect shelves in m
+		self.maxPackingBayDetectionDistance = 3.5  # max distance to detect packing bay in m
+		self.maxObstacleDetectionDistance = 3.5  # max distance to detect obstacles in m
+		self.maxRowMarkerDetectionDistance = 3.5  # max distance to detect row markers in m
+		self.maxShelfDetectionDistance = 7.0     # max distance to detect shelves in m
 		
 		# Collector Parameters
 		self.collectorQuality = 1.0      # collector quality from 0 to 1
