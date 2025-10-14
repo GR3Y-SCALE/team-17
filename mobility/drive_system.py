@@ -291,26 +291,31 @@ class DriveSystem:
 
     def _rpm_to_mps(self, rpm: float) -> float:
         return (rpm / 60.0) * (2.0 * math.pi * self.wheel_radius_m)
+    
+    def _rpm_to_dps(self, rpm: float) -> float:
+        return (12 * self.wheel_radius_m) / self.track_width_m * rpm
 
 
-    # TODO, dont use timing, try to use encoders for feedback
-    # def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
-    #     """
-    #     Turns the robot in place by a specified number of degrees.
+    def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
+        if angular_speed_dps <= 0.0:
+            raise ValueError("Angular velocity must be positive")
+        
+        direction = 1.0 if degrees >= 0.0 else -1.0
+        target_angle = abs(degrees)
+        angular_speed_dps = abs(angular_speed_dps) * direction
 
-    #     Args:
-    #         degrees: The angle to turn (positive for left/CCW, negative for right/CW).
-    #         angular_speed_dps: The speed to turn in degrees per second (default: 45).
-    #     """
-    #     if angular_speed_dps <= 0:
-    #         raise ValueError("Angular speed must be positive.")
+        self.set_target_velocities(0.0, angular_speed_dps)
 
-    #     direction = 1.0 if degrees >= 0 else -1.0
-    #     target_degrees = abs(degrees)
-    #     angular_speed_dps = abs(angular_speed_dps) * direction
+        angle_rotated = 0.0
+        last_rpm_l, last_rpm_r = 0.0, 0.0
+        last_time = time.time()
 
-    #     # Calculate time required to turn
-    #     duration = target_degrees / abs(angular_speed_dps)
+        try:
+            while angle_rotated < target_angle:
+                time.sleep(0.01)
+                current_time = time.time()
+                dt = current_time - last_time
+                last_time = current_time
 
     #     self.set_target_velocities(0.0, angular_speed_dps)
     #     time.sleep(duration)

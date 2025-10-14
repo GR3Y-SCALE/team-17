@@ -44,7 +44,7 @@ class NavClass:
         return attractive_field
 
     def compute_repulsive_field(self, obstacles):
-        min_obstacle_dist = 0.25 # minimum distance to object to consider
+        min_obstacle_dist = 8 # minimum distance to object to consider
         repulsive_field = np.zeros(self.FOV + 1)
         if obstacles is None or len(obstacles) == 0:
             return np.zeros(self.FOV + 1)
