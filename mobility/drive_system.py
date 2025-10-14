@@ -317,11 +317,148 @@ class DriveSystem:
                 dt = current_time - last_time
                 last_time = current_time
 
-                rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
+    #     self.set_target_velocities(0.0, angular_speed_dps)
+    #     time.sleep(duration)
+    #     self.stop_all()
+    #     print(f"Turn complete: {degrees} degrees turned.")
 
-                avg_rpm = (abs(rpm_l) + abs(rpm_r)) / 2.0
-                avg_dps = self._rpm_to_dps(avg_rpm)
-                angle_rotated += abs(avg_dps) * dt
-                last_rpm_l, last_rpm_r = rpm_l, rpm_r
+    # =========================
+    # === GEORGE'S ADD-ONS ===
+    # =========================
+
+    # -- Utility: soft encoder reset (works for boards that zero on re-enable) --
+    def _reset_encoders(self):
+        """
+        Best-effort encoder reset. If board exposes a dedicated 'clear encoder'
+        method, call it here instead. This version toggles enable and waits briefly.
+        """
+        # needs to be adjusted to suit (if your board has a different encoder clear method)
+        try:
+            self.board.set_encoder_enable(self.board.ALL)
+        except Exception as e:
+            print(f"Encoder enable/reset warning: {e}")
+        time.sleep(0.05)
+
+    # Utility: get current wheel RPMs as floats --
+    def _rpm_pair(self) -> Tuple[float, float]:
+        """Returns (left_rpm, right_rpm) as floats from the motor board."""
+        rpm_l, rpm_r = self.board.get_encoder_speed(self.board.ALL)
+        return float(rpm_l), float(rpm_r)
+
+    # -- Helper: pure spin (in-place) at a commanded degrees/sec --
+    def spin(self, dps: float):
+        """
+        Command a pure in-place spin at 'dps' (degrees per second). Positive = CCW.
+        Uses the existing velocity interface; call stop_all() to halt.
+        """
+        self.set_target_velocities(0.0, dps)
+
+    # -- Helper: drive an arc (v, w) for a fixed duration --
+    def drive_arc(self, linear_mps: float, angular_dps: float, duration_s: float):
+        """
+        Follow an arc with linear (m/s) and angular (deg/s) velocities for duration_s.
+        Cleanly stops at the end.
+        """
+        if duration_s <= 0.0:
+            return
+        self.set_target_velocities(linear_mps, angular_dps)
+        t0 = time.time()
+        try:
+            while (time.time() - t0) < duration_s and self._running:
+                time.sleep(0.02)
+        finally:
+            self.stop_all()
+
+    # Helper: Twist-style adapter (v in m/s, w in rad/s) --
+    def cmd_twist(self, v_mps: float, w_rad_s: float):
+        """
+        Convenience adapter if Navigation publishes (v, w) with w in rad/s.
+        """
+        self.set_target_velocities(v_mps, math.degrees(w_rad_s))
+
+    # Closed-loop, encoder-based in-place turn (no timing guesswork) --
+    def turn_degrees(self,
+                     degrees: float,
+                     # need sto be adjusted to suit (default spin speed for your robot/hardware)
+                     angular_speed_dps: float = 90.0,
+                     # need sto be adjusted to suit (how precise the stop needs to be)
+                     stop_tolerance_deg: float = 2.0,
+                     # need sto be adjusted to suit (where to start feathering the speed)
+                     feather_start_deg: float = 20.0):
+        """
+        Turn the robot in place by 'degrees' using encoder feedback.
+        Positive = CCW (left wheel backward, right wheel forward).
+        This does NOT modify existing code; it only uses provided APIs.
+
+        Args:
+            degrees: target heading change in degrees (positive CCW).
+            angular_speed_dps: commanded spin rate (deg/s). The method feathers down near the goal.
+            stop_tolerance_deg: stop once remaining angle is below this threshold.
+            feather_start_deg: start ramping down speed inside this remaining angle window.
+        """
+        if angular_speed_dps <= 0.0:
+            raise ValueError("angular_speed_dps must be positive")
+
+        # Geometry: distance each wheel must travel for an in-place spin
+        theta_rad = math.radians(degrees)
+        # need sto be adjusted to suit please (uses your robot's track width set in __init__)
+        half_track = self.track_width_m / 2.0
+        s_per_wheel = abs(theta_rad) * half_track  # meters
+
+        # Direction: CCW => left wheel backward, right wheel forward
+        left_sign  = -1.0 if theta_rad > 0 else 1.0
+        right_sign =  1.0 if theta_rad > 0 else -1.0
+
+        # Reset distance integration and set initial spin command
+        self._reset_encoders()
+        time.sleep(0.1)
+
+        # need sto be adjusted to suit please (min/max angular speed clamp appropriate for your motors)
+        commanded_w_dps = max(10.0, min(abs(angular_speed_dps), 180.0))
+        commanded_w_dps *= (1.0 if theta_rad > 0 else -1.0)
+
+        # Kick off pure spin
+        self.set_target_velocities(0.0, commanded_w_dps)
+
+        # Integrate distance from measured RPMs (uses existing _rpm_to_mps)
+        dist_l = 0.0
+        dist_r = 0.0
+        last_t = time.time()
+
+        try:
+            while True:
+                time.sleep(0.02)
+                now = time.time()
+                dt = now - last_t
+                last_t = now
+
+                rpm_l, rpm_r = self._rpm_pair()
+                # Convert to m/s; apply signs consistent with intended motion
+                v_l = self._rpm_to_mps(rpm_l) * math.copysign(1.0, left_sign)
+                v_r = self._rpm_to_mps(rpm_r) * math.copysign(1.0, right_sign)
+
+                dist_l += abs(v_l) * dt
+                dist_r += abs(v_r) * dt
+
+                # Remaining distance per wheel
+                rem_l = max(0.0, s_per_wheel - dist_l)
+                rem_r = max(0.0, s_per_wheel - dist_r)
+                rem = max(rem_l, rem_r)
+
+                # Convert remaining arc back to angle (deg) for intuitive feathering/stop
+                rem_theta_rad = rem / max(1e-9, half_track)  # guard divide by zero
+                rem_deg = abs(math.degrees(rem_theta_rad))
+
+                # Feather down angular speed inside feather window
+                # need sto be adjusted to suit please (feathering profile may vary with friction/torque)
+                if rem_deg < feather_start_deg:
+                    # Linearly scale down towards a floor (~20% of original)
+                    scale = max(0.2, rem_deg / max(1e-9, feather_start_deg))
+                    self.set_target_velocities(0.0, commanded_w_dps * scale)
+
+                # Stop condition
+                # need sto be adjusted to suit please (tolerance depends on wheel slip/backlash)
+                if rem_deg <= stop_tolerance_deg:
+                    break
         finally:
             self.stop_all()
