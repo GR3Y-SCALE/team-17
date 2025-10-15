@@ -42,6 +42,9 @@ upper_blue = np.array([150, 255, 255])
 lower_white = np.array([0, 0, 150])
 upper_white = np.array([80, 55, 255])
 
+lower_green = np.array([65, 200, 95]) # From old code
+upper_green = np.array([85, 255, 190])
+
 
 def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
     """ Calculate distance and bearing to object based on bounding box"""
@@ -276,13 +279,17 @@ def camera_operation():
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
         mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
         mask_white = cv2.inRange(hsv, lower_white, upper_white)
+        mask_green = cv2.inRange(hsv, lower_green, upper_green)
 
         colour_masks = {
             "Object":   (mask_orange,   (0, 140, 255),  70),
             "Platform": (mask_yellow,   (0, 255, 255),  120),
             "Shelf":    (mask_blue,     (255, 0, 0),    150),
-            "Walls":    (mask_white,    (255, 255, 255), 500)
+            "Walls":    (mask_white,    (255, 255, 255), 500),
+            "Obstacles":(mask_green,    (0, 255, 0),    200)
         }
+
+
 
         for label, (mask, draw_colour, known_size_mm) in colour_masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -298,7 +305,7 @@ def camera_operation():
                         cv2.putText(frame, label, (cx-30, cy-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, draw_colour, 2)
         
                     # ===== DISTANCE AND BEARING =====
-                    target_x, target_y, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
+                    _, _, distance_m, bearing_deg = compute_distance_and_bearing((x, y, w, h), frame.shape, known_size_mm)
                     text = f"{label}: {distance_m:.2f} m, {bearing_deg:.1f} degrees"
                     cv2.putText(frame, text, (x+w+5, y+h-5), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
 
