@@ -62,11 +62,11 @@ def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
     return target_x, target_y, distance_m, bearing_deg
 
 
-def detect_circles(contours, frame):
+def detect_circles(contours_black, frame): # Changed from contours to contours_black
     """ Detect circular objects from contours """
     circles = []
-    
-    for contour in contours:
+
+    for contour in contours_black:
         area = cv2.contourArea(contour)
         perimeter = cv2.arcLength(contour, True)
 
@@ -86,11 +86,11 @@ def detect_circles(contours, frame):
     return circles
 
 
-def detect_squares(contours, frame):
+def detect_squares(contours_black, frame): # Changed from contours to contours_black
     """ Detect square objects from contours """
     square_centers = []
-    
-    for contour in contours:
+
+    for contour in contours_black:
         area = cv2.contourArea(contour)
         perimeter = cv2.arcLength(contour, True)
 
@@ -203,9 +203,12 @@ def process_square_groups(square_centers, frame):
     """ Process groups of squares and calculate distance/bearing """
     if not square_centers:
         return None
-
-    # Use simple clustering instead of DBSCAN
+    
+    # Cluster squares based on proximity
     groups = simple_cluster_squares(square_centers, max_distance=100)
+    # square_centers_array = np.array(square_centers)
+    # clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
+    # labels = clustering.labels_
     
     for group_id, members in enumerate(groups):
         members_array = np.array(members)
