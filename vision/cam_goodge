@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from sklearn.cluster import DBSCAN
 import math
 
 # Camera setup
@@ -167,19 +166,51 @@ def process_circle_groups(circles, frame):
     return distance_m, bearing_deg
 
 
+def simple_cluster_squares(square_centers, max_distance=100):
+    """ Simple distance-based clustering for square centers """
+    if not square_centers:
+        return []
+    
+    groups = []
+    used = [False] * len(square_centers)
+    
+    for i, center in enumerate(square_centers):
+        if used[i]:
+            continue
+            
+        # Start new group
+        group = [center]
+        used[i] = True
+        
+        # Find nearby squares
+        for j, other_center in enumerate(square_centers):
+            if used[j]:
+                continue
+            
+            # Calculate distance between centers
+            distance = math.sqrt((center[0] - other_center[0])**2 + (center[1] - other_center[1])**2)
+            
+            if distance <= max_distance:
+                group.append(other_center)
+                used[j] = True
+        
+        groups.append(group)
+    
+    return groups
+
+
 def process_square_groups(square_centers, frame):
     """ Process groups of squares and calculate distance/bearing """
     if not square_centers:
         return None
 
-    square_centers_array = np.array(square_centers)
-    clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
-    labels = clustering.labels_
-
-    for group_id in np.unique(labels):
-        members = square_centers_array[labels == group_id]
-        group_center_x = np.mean(members[:, 0])
-        group_center_y = np.mean(members[:, 1])
+    # Use simple clustering instead of DBSCAN
+    groups = simple_cluster_squares(square_centers, max_distance=100)
+    
+    for group_id, members in enumerate(groups):
+        members_array = np.array(members)
+        group_center_x = np.mean(members_array[:, 0])
+        group_center_y = np.mean(members_array[:, 1])
 
         # Determine platform type based on number of squares
         num_squares = len(members)
