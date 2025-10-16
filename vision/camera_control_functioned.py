@@ -13,6 +13,26 @@ REAL_GREEN_WIDTH = 6.0
 REAL_BLACK_WIDTH = 5.0
 FOV_DEGREES = 140
 
+class VisionSystem:
+    def __init__(self):
+        self.frame_cap = initialize_camera()
+
+
+    def UpdateObjects(self):
+        self.frame = process_frame(self.frame_cap)
+            
+        # Create color masks
+        self.masks = create_color_masks(self.frame)
+        
+        # Track different objects
+        orange_data = track_orange_objects(self.frame, self.masks['orange'])
+        green_data = track_green_objects(self.frame, self.masks['green'])
+        blue_data = track_blue_objects(self.frame, self.masks['blue'])
+        black_data = process_black_markers(self.frame, self.masks['black_aisle'], self.masks['black_picking'])
+
+        #TODO update objects with distance and bearing
+
+
 def initialize_camera():
     """Initialize and configure the camera."""
     # cap = picamera2.Picamera2() now using 120 USB camera
