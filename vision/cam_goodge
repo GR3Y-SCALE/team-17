@@ -25,8 +25,10 @@ SQUARE_SIZE = 50
 PLATFORM_SPACING = 300
 
 # HSV Color Ranges
-lower_black = np.array([0, 0, 0])
-upper_black = np.array([180, 255, 50])
+lower_black_pick = np.array([0, 0, 0])
+upper_black_pick = np.array([180, 255, 50])
+lower_black_aisle = np.array([0, 0, 0])
+upper_black_aisle = np.array([180, 40, 130])
 
 lower_orange1 = np.array([0, 120, 80])
 upper_orange1 = np.array([15, 255, 255])
@@ -274,7 +276,7 @@ def camera_operation():
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
         # Create color masks
-        mask_black = cv2.inRange(hsv, lower_black, upper_black)
+        mask_black = cv2.inRange(hsv, lower_black_pick, upper_black_pick) | cv2.inRange(hsv, lower_black_aisle, upper_black_aisle)
         mask_orange = cv2.inRange(hsv, lower_orange1, upper_orange1) | cv2.inRange(hsv, lower_orange2, upper_orange2)
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
         mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
