@@ -1,5 +1,6 @@
 from navigation import state_machine as sm
 from navigation import NavMath as navmath
+from navigation.range_finder.PiicoDev_VL53L1X import PiicoDev_VL53L1X
 
 import numpy as np
 import math
@@ -7,7 +8,6 @@ import time
 import matplotlib.pyplot as plt
 
 debug = False
-
 class NavClass:
 
     def __init__(self, FOV, width=0.16, state_machine=None, robot=None):
@@ -15,6 +15,7 @@ class NavClass:
         self.width = width
         self.attractive_field = np.zeros(FOV + 1)
         self.repulsive_field = np.zeros(FOV + 1)
+        self.distSensor = PiicoDev_VL53L1X()
 
         self.forward_vel = 0
         self.rot_vel = 0
@@ -33,6 +34,8 @@ class NavClass:
         # compute potential fields from camera view
         # You would likely call calculate_goal_velocities from here
         # with the current goal and detected obstacles.
+    def get_range_finder_distance(self):
+        return self.distSensor.read()
 
     def compute_attractive_field(self, goal_deg): # feed in angle of goal
         attractive_field = np.zeros(self.FOV + 1)
