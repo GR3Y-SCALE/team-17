@@ -25,7 +25,7 @@ SQUARE_SIZE = 50
 PLATFORM_SPACING = 300
 
 # HSV Color Ranges
-lower_black_pick = np.array([0, 0, 0])
+lower_black_pick = np.array([0, 0, 0]) # Need to slightly adjust this as it's unstable
 upper_black_pick = np.array([180, 255, 130])
 lower_black_aisle = np.array([0, 0, 0])
 upper_black_aisle = np.array([180, 100, 130])
@@ -44,7 +44,8 @@ upper_blue = np.array([150, 255, 255])
 lower_white = np.array([0, 0, 150])
 upper_white = np.array([80, 55, 255])
 
-lower_green = np.array([65, 200, 95]) # From old code
+
+lower_green = np.array([65, 200, 95]) # Need to adjust this for new camera and lighting
 upper_green = np.array([85, 255, 190])
 
 
