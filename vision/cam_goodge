@@ -292,7 +292,6 @@ def camera_operation():
         }
 
 
-
         for label, (mask, draw_colour, known_size_mm) in colour_masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
