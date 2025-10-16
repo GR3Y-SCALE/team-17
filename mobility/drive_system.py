@@ -296,26 +296,26 @@ class DriveSystem:
         return (12 * self.wheel_radius_m) / self.track_width_m * rpm
 
 
-    def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
-        if angular_speed_dps <= 0.0:
-            raise ValueError("Angular velocity must be positive")
+    # def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
+    #     if angular_speed_dps <= 0.0:
+    #         raise ValueError("Angular velocity must be positive")
         
-        direction = 1.0 if degrees >= 0.0 else -1.0
-        target_angle = abs(degrees)
-        angular_speed_dps = abs(angular_speed_dps) * direction
+    #     direction = 1.0 if degrees >= 0.0 else -1.0
+    #     target_angle = abs(degrees)
+    #     angular_speed_dps = abs(angular_speed_dps) * direction
 
-        self.set_target_velocities(0.0, angular_speed_dps)
+    #     self.set_target_velocities(0.0, angular_speed_dps)
 
-        angle_rotated = 0.0
-        last_rpm_l, last_rpm_r = 0.0, 0.0
-        last_time = time.time()
+    #     angle_rotated = 0.0
+    #     last_rpm_l, last_rpm_r = 0.0, 0.0
+    #     last_time = time.time()
 
-        try:
-            while angle_rotated < target_angle:
-                time.sleep(0.01)
-                current_time = time.time()
-                dt = current_time - last_time
-                last_time = current_time
+    #     try:
+    #         while angle_rotated < target_angle:
+    #             time.sleep(0.01)
+    #             current_time = time.time()
+    #             dt = current_time - last_time
+    #             last_time = current_time
 
     #     self.set_target_velocities(0.0, angular_speed_dps)
     #     time.sleep(duration)
