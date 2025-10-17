@@ -1,4 +1,4 @@
- import io, fcntl, time
+import io, fcntl, time
 
 I2C_SLAVE = 0x0703
 I2C_ADDRESS = 0x08
