@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 from mobility.DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
 
 
+
 class DriveSystem:
     """
     A class to control a differential drive robot using the DFRobot DC Motor Driver.
@@ -12,7 +13,7 @@ class DriveSystem:
     def __init__(self,
                  i2c_bus: int = 1, 
                  i2c_addr: int = 0x10,
-                 wheel_radius_m: float = 0.060,
+                 wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
                  control_hz: float = 25.0,
                  kp: float = 1.3,
@@ -21,7 +22,8 @@ class DriveSystem:
                  invert_left: bool = False,
                  invert_right: bool = True,
                  max_angular_rps: float = 1.0,
-                 encoder_reduction_ratio: int = 100):
+                 encoder_reduction_ratio: int = 100,
+                 turn_gain: float = 0.17):
         """
         Initializes the DriveSystem.
 
@@ -68,6 +70,7 @@ class DriveSystem:
 
         self.invert_left = invert_left
         self.invert_right = invert_right
+        self.turn_gain = turn_gain
 
         # PID control state variables
         self._target_rpm_l = 0.0
@@ -402,7 +405,7 @@ class DriveSystem:
         # Geometry: distance each wheel must travel for an in-place spin
         theta_rad = math.radians(degrees)
         # need sto be adjusted to suit please (uses your robot's track width set in __init__)
-        half_track = self.track_width_m / 2.0
+        half_track = (self.track_width_m * self.turn_gain)/ 2.0
         s_per_wheel = abs(theta_rad) * half_track  # meters
 
         # Direction: CCW => left wheel backward, right wheel forward
