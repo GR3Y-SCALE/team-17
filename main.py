@@ -3,12 +3,15 @@
 import os,sys,time,math
 from mobility.drive_system import DriveSystem
 from navigation.NavClass import NavClass
+from vision.cam_goodge_again import VisionSystem
 from enum import Enum, auto
 
 nav = NavClass(FOV=140, width=0.16)
 robot = DriveSystem()
+vision = VisionSystem()
 
 class robot_state(Enum):
+    DEBUGGING = auto()
     APPROACH_PICKING_STATION = auto()
     COLLECT_ITEM = auto()
     FIND_ISLE = auto()
@@ -23,34 +26,45 @@ class collection_state(Enum):
 robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 
-def go_to_landmark(roi, distance, speed, debug=False):
+def go_to_landmark(object_lambda, distance, speed, debug=False):
     '''
     Drives the robot to a landmark in the warehouse using potential field, handles the event of object not being visible.
 
     Args:
-        roi: object's id
+        pass lambda function of getter for vision object
         distance: distance from the object the robot will stop at
         speed: forward velocity of robot when going to landmark.
     '''
+
+    # To Mozz
+    # Switch case for different landmark types
+    # to methods, it could be in the VisionSystem class itself
+    # or you could have it as a parameter to this function.
+    # Love Dan
     vision.UpdateObjects()
-    detected_objects_tuple = vision.GetDetectedObjects([objects.roi])
-    if chosen_landmark is None:
+    landmark = object_lambda()
+
+    if landmark is None:
         if debug: print("Landmark not visible")
-        while chosen_landmark is None:
+        while landmark is None:
             if debug: print("Searching...")
             robot.SetTargetVelocities(0.0, -0.1)
+
             vision.UpdateObjects()
-            detected_objects_tuple = vision.GetDetectedObjects([objects.roi])
+            landmark = object_lambda()
+            time.sleep(0.001)
     robot.SetTargetVelocities(0.0, 0.0)
     if debug: print("Found!")
-    while chosen_landmark[0] > distance and chosen_landmark[0] is not None:
+    obs = vision.get_obstacles()
+    while landmark[0] > distance and landmark[0] is not None:
         if debug: print("Going to landmark...")
-        detected_objects_tuple = vision.GetDetectedObjects([objects.roi])
         vision.UpdateObjects()
-        nav_data = nav.calculate_goal_velocities(int(math.degrees(detected_objects_tuple[1])), None, True)
+        landmark = object_lambda()
+
+        nav_data = nav.calculate_goal_velocities(int(math.degrees(landmark[1])), None, True)
         robot.SetTargetVelocities(speed, nav_data['rotational_vel'])
         time.sleep(0.001)
-        if debug: print('Distance to landmark: ' + str(round(detected_objects_tuple[0],2)))
+        if debug: print('Distance to landmark: ' + str(round(landmark[0],2)))
     robot.SetTargetVelocities(0.0, 0.0)
     print("Complete!")
 

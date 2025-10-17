@@ -49,6 +49,7 @@ upper_white = np.array([80, 55, 255])
 
 lower_green = np.array([65, 200, 95]) # Need to adjust this for new camera and lighting
 upper_green = np.array([85, 255, 190])
+        
 
 
 def compute_distance_and_bearing(bbox, frame_shape, known_size_mm):
@@ -289,19 +290,43 @@ def process_square_groups(square_centers, frame):
         return distance_m, bearing_deg
 
     return None
+# ==========================================================================
+# ++   SOME ABSOLUTELY CRACKED OBJECT ORIENTED PROGRAMMING GOING ON HERE  ++
+# ==========================================================================
 
-def camera_operation():
-    """ Main camera operation function - maintains original interface for backwards compatibility """
-    # Initialize return variables
-    items_rb = []
-    packing_station_rb = []
-    obstacles_rb = []
-    row_marker_rb = []
-    shelf_rb = []
-    picking_station_rb = []
-    debug_mode = False
+class VisionSystem:
+    def __init__(self):
+        self.items_rb = []
+        self.packing_station_rb = []
+        self.obstacles_rb = []
+        self.row_marker_rb = []
+        self.shelf_rb = []
+        self.picking_station_rb = []
+        self.debug_mode = False
 
-    while True:
+    def get_items(self):
+        return self.items_rb
+    def get_packing_stations(self):
+        return self.packing_station_rb
+    def get_row_markers(self):
+        return self.row_marker_rb
+    def get_shelves(self):
+        return self.shelf_rb
+    def get_picking_stations(self):
+        return self.picking_station_rb
+    def get_obstacles(self):
+        return self.obstacles_rb
+
+    def UpdateObjects(self):
+        """ Main camera operation function"""
+        # cleanup return variables
+        self.items_rb.clear()
+        self.packing_station_rb.clear()
+        self.obstacles_rb.clear()
+        self.row_marker_rb.clear()
+        self.shelf_rb.clear()
+        self.picking_station_rb.clear()
+
         # Capture and preprocess frame
         frame = frame_cap.read()[1]
 
@@ -348,9 +373,9 @@ def camera_operation():
 
         # ===== RETURN VARIABLES FOR COLOR DETECTION =====
         if label == "Platform":
-            packing_station_rb.append((distance_m, bearing_deg))
+            self.packing_station_rb.append((distance_m, bearing_deg))
         elif label == "Shelf":
-            shelf_rb.append((distance_m, bearing_deg))
+            self.shelf_rb.append((distance_m, bearing_deg))
 
         # Find contours in black mask
         contours_black_aisle, _ = cv2.findContours(mask_black_aisle, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -373,11 +398,11 @@ def camera_operation():
             if circle_result:
                 distance_m, bearing_deg = circle_result
                 if len(circles) == 1:
-                    row_marker_rb = [(distance_m, bearing_deg), None, None]
+                    self.row_marker_rb = [(distance_m, bearing_deg), None, None]
                 elif len(circles) == 2:
-                    row_marker_rb = [None, (distance_m, bearing_deg), None]
+                    self.row_marker_rb = [None, (distance_m, bearing_deg), None]
                 elif len(circles) >= 3:
-                    row_marker_rb = [None, None, (distance_m, bearing_deg)]
+                    self.row_marker_rb = [None, None, (distance_m, bearing_deg)]
 
         # Process square groups for picking stations
         if square_centers:
@@ -385,11 +410,11 @@ def camera_operation():
             if square_result:
                 distance_m, bearing_deg = square_result
                 if len(square_centers) == 1:
-                    picking_station_rb = [(distance_m, bearing_deg), None, None]
+                    self.picking_station_rb = [(distance_m, bearing_deg), None, None]
                 elif len(square_centers) == 2:
-                    picking_station_rb = [None, (distance_m, bearing_deg), None]
+                    self.picking_station_rb = [None, (distance_m, bearing_deg), None]
                 elif len(square_centers) >= 3:
-                    picking_station_rb = [None, None, (distance_m, bearing_deg)]
+                    self.picking_station_rb = [None, None, (distance_m, bearing_deg)]
 
         # Add shape count overlay
         if circle_count > 0 or square_count > 0:
@@ -400,23 +425,11 @@ def camera_operation():
 
         # Display results
         cv2.imshow("Frame", frame)
-        if debug_mode:
+        if self.debug_mode:
             combined_mask = mask_orange | mask_yellow | mask_blue | mask_black_pick | mask_black_aisle | mask_white | mask_green
             cv2.imshow("Debug Masks", combined_mask)
         # cv2.imshow("Undistorted Frame", calibrate.undistort(frame))  # Check that this works
 
-        # Handle keyboard input
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            break
-        elif key == ord('d'):
-            debug_mode = not debug_mode
-            print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
-            if not debug_mode:
-                cv2.destroyWindow("Debug Masks")
 
-    cv2.destroyAllWindows()
-    return (items_rb, packing_station_rb, obstacles_rb, row_marker_rb, shelf_rb, picking_station_rb)
-
-if __name__ == "__main__":
-    camera_operation()
+        cv2.destroyAllWindows()
+        # return (self.packing_station_rb, self.row_marker_rb, self.shelf_rb, self.picking_station_rb) # no items? No obstacles, for now
