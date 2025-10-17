@@ -302,7 +302,8 @@ class VisionSystem:
         self.row_marker_rb = []
         self.shelf_rb = []
         self.picking_station_rb = []
-        self.debug_mode = False
+        self.debug_mode = True
+        print("VisionSystem initialised successfully.")
 
     def get_items(self):
         return self.items_rb

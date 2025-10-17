@@ -1,14 +1,39 @@
 #!/usr/bin/env python3
 
 import os,sys,time,math
-from mobility.drive_system import DriveSystem
+# from mobility.drive_system import DriveSystem
 from navigation.NavClass import NavClass
 from vision.cam_goodge_again import VisionSystem
 from enum import Enum, auto
 
-nav = NavClass(FOV=140, width=0.16)
-robot = DriveSystem()
-vision = VisionSystem()
+critical_fault = False
+
+try:
+    robot = DriveSystem()
+    pass
+except Exception as e:
+    print(f"ERROR: Cannot initialise mobility system. Reason: {e}", file=sys.stderr)
+    critical_fault = True
+
+try:
+    vision = VisionSystem()
+except Exception as e:
+    print(f"ERROR: Cannot initialise vision system. Reason: {e}", file=sys.stderr)
+    critical_fault = True
+
+try:
+    nav = NavClass(FOV=140, width=0.16)
+except Exception as e:
+    print(f"ERROR: Cannot initialise navigation system. Reason: {e}", file=sys.stderr)
+    critical_fault = True
+# nav = NavClass(FOV=140, width=0.16)
+
+if not critical_fault: 
+    print("Systems initialised, ready to rock")
+else:
+    print("Ruh roh, somethings borked")
+
+
 
 class robot_state(Enum):
     DEBUGGING = auto()
@@ -17,13 +42,12 @@ class robot_state(Enum):
     FIND_ISLE = auto()
     DESPOSIT_ITEM = auto()
     RETURN_TO_PICKING_STATION = auto()
-robot_navigation_state = robot_state.DEBUGGING
 
-class collection_state(Enum):
-    ENTER_RAMP_BAY = auto()
-    APPROACHING_ITEM = auto()
-    PICKING_UP_ITEM = auto()
-robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
+# class collection_state(Enum):
+#     ENTER_RAMP_BAY = auto()
+#     APPROACHING_ITEM = auto()
+#     PICKING_UP_ITEM = auto()
+# robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 
 def go_to_landmark(object_lambda, distance, speed, debug=False):
@@ -71,7 +95,7 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
 
 iteration = 0
 dt = 0.1
-last_time = time.time()
+
 
 picking_station_order = [0, 1, 2]
 shelf_number = [0, 3, 5]
@@ -82,20 +106,21 @@ shelf_number_for_deposit = [0,3,4]
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
 
 def main():
-    now = time.time()
-    elapsed = now - last_time
-    while elapsed < dt:
-        time.sleep(dt - elapsed)
-        continue
-    last_time = now 
-
+    # last_time = time.time()
+    robot_navigation_state = robot_state.DEBUGGING
     try:
-        robot.turn_degrees(90, 180)
         while True:
+            # now = time.time()
+            # elapsed = now - last_time
+            # while elapsed < dt:
+            #     time.sleep(dt - elapsed)
+            #     continue
+            # last_time = now 
             # Update camera objects
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
+                    print("Sick as")
                     time.sleep(0.1)
 
                 case robot_state.APPROACH_PICKING_STATION:

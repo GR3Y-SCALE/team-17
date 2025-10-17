@@ -10,12 +10,14 @@ import matplotlib.pyplot as plt
 debug = False
 class NavClass:
 
-    def __init__(self, FOV, width=0.16, state_machine=None, robot=None):
+    def __init__(self, FOV, width=0.16, range_finder=False, state_machine=None, robot=None):
         self.FOV = FOV
         self.width = width
         self.attractive_field = np.zeros(FOV + 1)
         self.repulsive_field = np.zeros(FOV + 1)
-        self.distSensor = PiicoDev_VL53L1X()
+
+        if range_finder:
+            self.distSensor = PiicoDev_VL53L1X()
 
         self.forward_vel = 0
         self.rot_vel = 0
@@ -26,6 +28,7 @@ class NavClass:
             self.state_machine = sm.StateMachine(robot)
         else:
             self.state_machine = None
+        print("NavClass initialised successfully.")
 
     def update(self, event=None):
         if self.state_machine is not None:
