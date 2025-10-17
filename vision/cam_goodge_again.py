@@ -4,9 +4,6 @@ import math
 from sklearn.cluster import DBSCAN
 # from calibration import calibrate
 
-# Camera setup
-frame_cap = cv2.VideoCapture(0)
-
 # Camera Configuration Constants (mm)
 FOCAL_LENGTH = 2.9
 SENSOR_HEIGHT = 2.4
@@ -288,8 +285,13 @@ def process_square_groups(square_centers, frame):
                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         return distance_m, bearing_deg
+    
 
     return None
+
+def show_frame(frame):
+    cv2.imshow("Frame", frame)
+    cv2.waitKey(1)
 # ==========================================================================
 # ++   SOME ABSOLUTELY CRACKED OBJECT ORIENTED PROGRAMMING GOING ON HERE  ++
 # ==========================================================================
@@ -303,6 +305,7 @@ class VisionSystem:
         self.shelf_rb = []
         self.picking_station_rb = []
         self.debug_mode = True
+        self.frame_cap = cv2.VideoCapture(0)
         print("VisionSystem initialised successfully.")
 
     def get_items(self):
@@ -317,6 +320,10 @@ class VisionSystem:
         return self.picking_station_rb
     def get_obstacles(self):
         return self.obstacles_rb
+    
+    def camera_release(self):
+        self.frame_cap.release()
+
 
     def UpdateObjects(self):
         """ Main camera operation function"""
@@ -329,9 +336,9 @@ class VisionSystem:
         self.picking_station_rb.clear()
 
         # Capture and preprocess frame
-        frame = frame_cap.read()[1]
+        frame = self.frame_cap.read()[1]
 
-        frame = cv2.resize(frame, (320, 240))
+        frame = cv2.resize(frame, (640, 480))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -425,12 +432,13 @@ class VisionSystem:
             # cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
 
         # Display results
-        cv2.imshow("Frame", frame)
+        show_frame(frame)
         if self.debug_mode:
             combined_mask = mask_orange | mask_yellow | mask_blue | mask_black_pick | mask_black_aisle | mask_white | mask_green
             cv2.imshow("Debug Masks", combined_mask)
+            print("Frame processed")
         # cv2.imshow("Undistorted Frame", calibrate.undistort(frame))  # Check that this works
 
 
-        cv2.destroyAllWindows()
+        # cv2.destroyAllWindows()
         # return (self.packing_station_rb, self.row_marker_rb, self.shelf_rb, self.picking_station_rb) # no items? No obstacles, for now

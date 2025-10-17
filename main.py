@@ -121,7 +121,8 @@ def main():
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
                     print("Sick as")
-                    time.sleep(0.1)
+                    print(vision.get_shelves())
+                    time.sleep(0.01)
 
                 case robot_state.APPROACH_PICKING_STATION:
                     # Use first shelf to navigate to picking station and turn to face the correct marker
@@ -163,6 +164,7 @@ def main():
             
     except KeyboardInterrupt:
         print("Exiting")
+        vision.camera_release()
         robot.stop_all()
 
 
