@@ -12,7 +12,7 @@ class DriveSystem:
     def __init__(self,
                  i2c_bus: int = 1, 
                  i2c_addr: int = 0x10,
-                 wheel_radius_m: float = 0.070,
+                 wheel_radius_m: float = 0.060,
                  track_width_m: float = 0.155,
                  control_hz: float = 25.0,
                  kp: float = 1.3,
