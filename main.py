@@ -17,7 +17,7 @@ class robot_state(Enum):
     FIND_ISLE = auto()
     DESPOSIT_ITEM = auto()
     RETURN_TO_PICKING_STATION = auto()
-robot_navigation_state = robot_state.COLLECT_ITEM
+robot_navigation_state = robot_state.DEBUGGING
 
 class collection_state(Enum):
     ENTER_RAMP_BAY = auto()
@@ -94,6 +94,10 @@ def main():
         while True:
             # Update camera objects
             match robot_navigation_state:
+                case robot_state.DEBUGGING:
+                    vision.UpdateObjects()
+                    time.sleep(0.1)
+
                 case robot_state.APPROACH_PICKING_STATION:
                     # Use first shelf to navigate to picking station and turn to face the correct marker
                     robot_navigation_state = robot_state.COLLECT_ITEM
