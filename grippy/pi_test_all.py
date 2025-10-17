@@ -9,16 +9,15 @@ with open("/dev/i2c-1", "wb", buffering=0) as f:
     # --- LED test ---
     for cmd in [b"G", b"Y", b"R", b"F"]:
         f.write(cmd)
-        time.sleep(3)
+        time.sleep(1)
 
     # --- Gripper test ---
     f.write(b"O")  # Open
-    time.sleep(3)
+    time.sleep(1)
     f.write(b"C")  # Close
-    time.sleep(3)
+    time.sleep(1)
 
     # --- Lift test ---
     for cmd in [b"L0", b"L1", b"L2", b"L3", b"L4"]:
         f.write(cmd)
-        time.sleep(3)
-    
+        time.sleep(1)
