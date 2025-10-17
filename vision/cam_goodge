@@ -298,7 +298,7 @@ def camera_operation():
         # Capture and preprocess frame
         frame = frame_cap.read()[1]
 
-        frame = cv2.resize(frame, (320, 240))
+        frame = cv2.resize(frame, (640, 480))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 

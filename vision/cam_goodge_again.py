@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 from sklearn.cluster import DBSCAN
+from calibration import calibrate
 
 # Camera setup
 frame_cap = cv2.VideoCapture(0)
@@ -23,6 +24,7 @@ SINGLE_CIRCLE_SIZE = 70
 MULTI_CIRCLE_SIZE = 120
 SQUARE_SIZE = 50
 PLATFORM_SPACING = 300
+SQUARE_GROUP_SPACING = 140  # Spacing between squares in a group (mm)
 
 # HSV Color Ranges
 lower_black_pick = np.array([0, 0, 0]) # Need to slightly adjust this as it's unstable
@@ -112,8 +114,8 @@ def detect_squares(contours_black, frame): # Changed from contours to contours_b
                     cy_square = y + h // 2
                     square_centers.append([cx_square, cy_square])
 
-                # Draw rectangle around detected square
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                # Draw small marker for individual squares (optional - can be removed)
+                cv2.circle(frame, (cx_square, cy_square), 3, (0, 0, 255), -1)
 
     return square_centers
 
@@ -149,7 +151,7 @@ def process_circle_groups(circles, frame):
             _, radius = circles[circle_idx]
             object_size = radius * 2
             known_size_mm = SINGLE_CIRCLE_SIZE
-            group_label = "Row Marker 1"
+            group_label = "Aisle Marker 1"
             
         elif num_circles == 2:
             # Two circles - use distance between centers
@@ -158,7 +160,7 @@ def process_circle_groups(circles, frame):
             center2 = circle_centers[circle_indices[1]]
             object_size = math.dist(center1, center2)
             known_size_mm = MULTI_CIRCLE_SIZE
-            group_label = "Row Marker 2"
+            group_label = "Aisle Marker 2"
             
         else:  # 3 or more circles
             # Multiple circles - use average distance between all pairs
@@ -171,7 +173,7 @@ def process_circle_groups(circles, frame):
                     distances.append(math.dist(center_i, center_j))
             object_size = np.mean(distances) if distances else 50  # fallback
             known_size_mm = MULTI_CIRCLE_SIZE
-            group_label = "Row Marker 3"
+            group_label = "Aisle Marker 3"
 
         # Calculate distance and bearing for the group
         target_x, target_y = int(group_center_x), int(group_center_y)
@@ -199,83 +201,73 @@ def process_circle_groups(circles, frame):
     return None
 
 
-# def simple_cluster_squares(square_centers, max_distance=100):
-#     """ Simple distance-based clustering for square centers """
-#     if not square_centers:
-#         return []
-    
-#     groups = []
-#     used = [False] * len(square_centers)
-    
-#     for i, center in enumerate(square_centers):
-#         if used[i]:
-#             continue
-            
-#         # Start new group
-#         group = [center]
-#         used[i] = True
-        
-#         # Find nearby squares
-#         for j, other_center in enumerate(square_centers):
-#             if used[j]:
-#                 continue
-            
-#             # Calculate distance between centers
-#             distance = math.sqrt((center[0] - other_center[0])**2 + (center[1] - other_center[1])**2)
-            
-#             if distance <= max_distance:
-#                 group.append(other_center)
-#                 used[j] = True
-        
-#         groups.append(group)
-    
-#     return groups
-
-
 def process_square_groups(square_centers, frame):
-    """ Process groups of squares and calculate distance/bearing """
+    """ Process groups of squares and calculate distance/bearing with bounding boxes around entire groups """
     if not square_centers:
         return None
     
-    # Cluster squares based on proximity
-    # groups = simple_cluster_squares(square_centers, max_distance=100)
-
+    # Cluster squares based on proximity (using 100px as clustering distance)
     square_centers_array = np.array(square_centers)
     clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
     labels = clustering.labels_
     
     for group_id in np.unique(labels):
         members_array = square_centers_array[labels == group_id]
-        group_center_x = np.mean(members_array[:, 0])
-        group_center_y = np.mean(members_array[:, 1])
+        num_squares = len(members_array)
+        
+        # Calculate bounding box around the entire group
+        min_x = np.min(members_array[:, 0])
+        max_x = np.max(members_array[:, 0])
+        min_y = np.min(members_array[:, 1])
+        max_y = np.max(members_array[:, 1])
+        
+        # Add padding to the bounding box
+        padding = 20
+        bbox_x1 = int(min_x - padding)
+        bbox_y1 = int(min_y - padding)
+        bbox_x2 = int(max_x + padding)
+        bbox_y2 = int(max_y + padding)
+        
+        # Calculate group center and dimensions
+        group_center_x = (bbox_x1 + bbox_x2) / 2
+        group_center_y = (bbox_y1 + bbox_y2) / 2
+        bbox_width = bbox_x2 - bbox_x1
+        bbox_height = bbox_y2 - bbox_y1
 
         # Determine platform type based on number of squares
-        num_squares = len(members_array)
         if num_squares == 1:
-            group_label = "Platform 1"
+            group_label = "Platform Marker 1"
+            known_size_mm = SQUARE_SIZE
         elif num_squares == 2:
-            group_label = "Platform 2"
+            group_label = "Platform Marker 2"
+            known_size_mm = SQUARE_GROUP_SPACING
         elif num_squares == 3:
-            group_label = "Platform 3"
+            group_label = "Platform Marker 3"
+            known_size_mm = SQUARE_GROUP_SPACING * 2
         else:
-            group_label = f"Group: {num_squares} squares"
+            group_label = f"Platform Marker {num_squares}"
+            known_size_mm = SQUARE_GROUP_SPACING * (num_squares - 1)
 
-        # Draw group visualization
-        cv2.putText(frame, group_label, (int(group_center_x) - 50, int(group_center_y) - 110),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-        cv2.circle(frame, (int(group_center_x), int(group_center_y)), 10, (255, 0, 0), 2)
+        # Draw bounding box around the entire group
+        cv2.rectangle(frame, (bbox_x1, bbox_y1), (bbox_x2, bbox_y2), (255, 0, 0), 2)
+        
+        # Draw group center point
+        cv2.circle(frame, (int(group_center_x), int(group_center_y)), 5, (255, 0, 0), -1)
 
-        # Calculate distance and bearing for the group
-        bbox_w, bbox_h = SQUARE_SIZE, SQUARE_SIZE
+        # Calculate distance and bearing for the group using the bounding box
         _, _, distance_m, bearing_deg = compute_distance_and_bearing(
-            (group_center_x - bbox_w/2, group_center_y - bbox_h/2, bbox_w, bbox_h),
+            (bbox_x1, bbox_y1, bbox_width, bbox_height),
             frame.shape,
-            PLATFORM_SPACING
+            known_size_mm
         )
 
+        # Draw group label
+        cv2.putText(frame, group_label, (bbox_x1, bbox_y1 - 10),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+
         # Add distance/bearing text
-        cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
-                   (int(group_center_x) - 80, int(group_center_y) + 40),
+        cv2.putText(frame, f"{distance_m:.2f}m, {bearing_deg:.1f}deg",
+                   (bbox_x1, bbox_y2 + 20),
                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         return distance_m, bearing_deg
@@ -299,7 +291,7 @@ def camera_operation():
         # Capture and preprocess frame
         frame = frame_cap.read()[1]
 
-        frame = cv2.resize(frame, (320, 240))
+        frame = cv2.resize(frame, (640, 480))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -397,6 +389,7 @@ def camera_operation():
         if debug_mode:
             combined_mask = mask_orange | mask_yellow | mask_blue | mask_black_pick | mask_black_aisle | mask_white | mask_green
             cv2.imshow("Debug Masks", combined_mask)
+        cv2.imshow("Undistorted Frame", calibrate.undistort(frame))  # Check that this works
 
         # Handle keyboard input
         key = cv2.waitKey(1) & 0xFF
