@@ -7,9 +7,6 @@ from sklearn.cluster import DBSCAN
 # Camera setup
 frame_cap = cv2.VideoCapture(0)
 
-# Camera focus settings
-frame_cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Enable autofocus
-
 # Camera Configuration Constants (mm)
 FOCAL_LENGTH = 2.9
 SENSOR_HEIGHT = 2.4
@@ -32,6 +29,7 @@ SQUARE_GROUP_SPACING = 140  # Spacing between squares in a group (mm)
 # HSV Color Ranges
 lower_black_pick = np.array([0, 0, 0]) # Need to slightly adjust this as it's unstable
 upper_black_pick = np.array([180, 255, 130])
+# upper_black_pick = np.array([180, 255, 150])
 lower_black_aisle = np.array([0, 0, 0])
 upper_black_aisle = np.array([180, 100, 130])
 
@@ -48,7 +46,6 @@ upper_blue = np.array([150, 255, 255])
 
 lower_white = np.array([0, 0, 150])
 upper_white = np.array([80, 55, 255])
-
 
 lower_green = np.array([65, 200, 95]) # Need to adjust this for new camera and lighting
 upper_green = np.array([85, 255, 190])
@@ -108,7 +105,7 @@ def detect_squares(contours_black, frame): # Changed from contours to contours_b
 
         if perimeter > 0 and area > MIN_CONTOUR_AREA:
             approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-            if len(approx) == 4:
+            if len(approx) > 3:
                 x, y, w, h = cv2.boundingRect(approx)
                 aspect_ratio = float(w) / h
 
@@ -137,7 +134,7 @@ def process_circle_groups(circles, frame):
     
     # Use DBSCAN to cluster circles based on proximity
     # eps=80 for circles (smaller than squares since circles are typically closer together)
-    clustering = DBSCAN(eps=80, min_samples=1).fit(circle_centers_array)
+    clustering = DBSCAN(eps=25, min_samples=1).fit(circle_centers_array)
     labels = clustering.labels_
     
     for group_id in np.unique(labels):
@@ -178,6 +175,19 @@ def process_circle_groups(circles, frame):
             known_size_mm = MULTI_CIRCLE_SIZE
             group_label = "Aisle Marker 3"
 
+        # Calculate bounding box around the circle group
+        min_x = np.min(members_array[:, 0])
+        max_x = np.max(members_array[:, 0])
+        min_y = np.min(members_array[:, 1])
+        max_y = np.max(members_array[:, 1])
+        
+        # Add padding to the bounding box
+        padding = 30
+        bbox_x1 = int(min_x - padding)
+        bbox_y1 = int(min_y - padding)
+        bbox_x2 = int(max_x + padding)
+        bbox_y2 = int(max_y + padding)
+        
         # Calculate distance and bearing for the group
         target_x, target_y = int(group_center_x), int(group_center_y)
         
@@ -189,14 +199,17 @@ def process_circle_groups(circles, frame):
         pixels_from_center = target_x - (img_width_px / 2)
         bearing_deg = (CAM_FOV * pixels_from_center) / img_width_px
 
+        # Draw bounding box around the circle group
+        cv2.rectangle(frame, (bbox_x1, bbox_y1), (bbox_x2, bbox_y2), (0, 255, 0), 2)
+        
         # Draw group visualization
-        cv2.putText(frame, group_label, (target_x - 50, target_y - 110),
+        cv2.putText(frame, group_label, (bbox_x1, bbox_y1 - 10),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.circle(frame, (target_x, target_y), 10, (0, 255, 0), 2)
 
         # Add distance/bearing text
-        cv2.putText(frame, f"{group_label}: {distance_m:.2f} m, {bearing_deg:.1f} deg",
-                   (target_x - 80, target_y + 40),
+        cv2.putText(frame, f"{distance_m:.2f}m, {bearing_deg:.1f}deg",
+                   (bbox_x1, bbox_y2 + 20),
                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         return distance_m, bearing_deg
@@ -209,9 +222,9 @@ def process_square_groups(square_centers, frame):
     if not square_centers:
         return None
     
-    # Cluster squares based on proximity (using 100px as clustering distance)
+    # Cluster squares based on proximity (using 25px as clustering distance)
     square_centers_array = np.array(square_centers)
-    clustering = DBSCAN(eps=100, min_samples=1).fit(square_centers_array)
+    clustering = DBSCAN(eps=25, min_samples=1).fit(square_centers_array)
     labels = clustering.labels_
     
     for group_id in np.unique(labels):
@@ -310,7 +323,7 @@ def camera_operation():
             "Object":   (mask_orange,   (0, 140, 255),  70),
             "Platform": (mask_yellow,   (0, 255, 255),  120),
             "Shelf":    (mask_blue,     (255, 0, 0),    150),
-            "Walls":    (mask_white,    (255, 255, 255), 500),
+            # "Walls":    (mask_white,    (255, 255, 255), 500),
             "Obstacles":(mask_green,    (0, 255, 0),    200)
         }
 
@@ -382,8 +395,8 @@ def camera_operation():
         if circle_count > 0 or square_count > 0:
             text = f"Circles: {circle_count}" if circle_count > 0 else f"Squares: {square_count}"
             # Add black outline for better visibility
-            cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
-            cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+            # cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 8, cv2.LINE_AA)
+            # cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
 
         # Display results
         cv2.imshow("Frame", frame)
