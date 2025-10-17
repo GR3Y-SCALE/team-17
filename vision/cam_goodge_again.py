@@ -2,10 +2,13 @@ import cv2
 import numpy as np
 import math
 from sklearn.cluster import DBSCAN
-from calibration import calibrate
+# from calibration import calibrate
 
 # Camera setup
 frame_cap = cv2.VideoCapture(0)
+
+# Camera focus settings
+frame_cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Enable autofocus
 
 # Camera Configuration Constants (mm)
 FOCAL_LENGTH = 2.9
@@ -115,7 +118,7 @@ def detect_squares(contours_black, frame): # Changed from contours to contours_b
                     square_centers.append([cx_square, cy_square])
 
                 # Draw small marker for individual squares (optional - can be removed)
-                cv2.circle(frame, (cx_square, cy_square), 3, (0, 0, 255), -1)
+                # cv2.circle(frame, (cx_square, cy_square), 3, (0, 0, 255), -1)
 
     return square_centers
 
@@ -285,13 +288,11 @@ def camera_operation():
     picking_station_rb = []
     debug_mode = False
 
-    print("Camera operation started. Press 'q' to quit, 'd' to toggle debug mode.")
-
     while True:
         # Capture and preprocess frame
         frame = frame_cap.read()[1]
 
-        frame = cv2.resize(frame, (640, 480))
+        frame = cv2.resize(frame, (320, 240))
         frame = cv2.rotate(frame, cv2.ROTATE_180) # IF NEEDED
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -389,7 +390,7 @@ def camera_operation():
         if debug_mode:
             combined_mask = mask_orange | mask_yellow | mask_blue | mask_black_pick | mask_black_aisle | mask_white | mask_green
             cv2.imshow("Debug Masks", combined_mask)
-        cv2.imshow("Undistorted Frame", calibrate.undistort(frame))  # Check that this works
+        # cv2.imshow("Undistorted Frame", calibrate.undistort(frame))  # Check that this works
 
         # Handle keyboard input
         key = cv2.waitKey(1) & 0xFF
