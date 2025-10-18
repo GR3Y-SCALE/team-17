@@ -122,7 +122,7 @@ def main():
                     vision.UpdateObjects()
                     print("Sick as")
                     print(vision.get_shelves())
-                    time.sleep(0.01)
+                    time.sleep(0.1)
 
                 case robot_state.APPROACH_PICKING_STATION:
                     # Use first shelf to navigate to picking station and turn to face the correct marker
