@@ -5,13 +5,13 @@ from sklearn.cluster import DBSCAN
 # from calibration import calibrate
 
 # Camera Configuration Constants (mm)
-FOCAL_LENGTH = 2.9
+FOCAL_LENGTH = 1.06
 SENSOR_HEIGHT = 2.4
 SENSOR_WIDTH = 3.2
 CAM_FOV = 140  # degrees
 
 # Detection Thresholds
-MIN_CONTOUR_AREA = 150
+MIN_CONTOUR_AREA = 200
 CIRCULARITY_THRESHOLD = 0.80
 SQUARE_ASPECT_RATIO_MIN = 0.9
 SQUARE_ASPECT_RATIO_MAX = 1.1
@@ -19,8 +19,8 @@ SQUARE_ASPECT_RATIO_MAX = 1.1
 # Known Object Sizes (mm)
 SINGLE_CIRCLE_SIZE = 70
 MULTI_CIRCLE_SIZE = 100
-SQUARE_SIZE = 50
-PLATFORM_SPACING = 300 # This might be unused, but keeping it
+SQUARE_SIZE = 60
+PLATFORM_SPACING = 200 # This might be unused, but keeping it
 SQUARE_GROUP_SPACING = 140  # Spacing between squares in a group (mm)
 
 # HSV Color Ranges (These ranges should now be more stable due to LAB/CLAHE preprocessing)
@@ -223,7 +223,7 @@ def process_square_groups(square_centers, frame):
     
     # Cluster squares based on proximity (using 25px as clustering distance)
     square_centers_array = np.array(square_centers)
-    clustering = DBSCAN(eps=100, min_samples=2).fit(square_centers_array) # Tune eps if squares are further apart
+    clustering = DBSCAN(eps=150, min_samples=1).fit(square_centers_array) # Tune eps if squares are further apart
     labels = clustering.labels_
     
     # Store results for each group
@@ -397,7 +397,7 @@ class VisionSystem:
         colour_masks = {
             "Item":     (mask_orange,   (0, 140, 255),  SINGLE_CIRCLE_SIZE), # Use SINGLE_CIRCLE_SIZE for single item, adjust if multi-item
             "Platform": (mask_yellow,   (0, 255, 255),  MULTI_CIRCLE_SIZE), # Use MULTI_CIRCLE_SIZE for platforms
-            "Shelf":    (mask_blue,     (255, 0, 0),    150), # Known size for shelf
+            # "Shelf":    (mask_blue,     (255, 0, 0),    150), # Known size for shelf
             # "Wall":     (mask_white,    (255, 255, 255), 500), # Known size for wall (large object)
             # "Obstacle":(mask_green,    (0, 255, 0),    200) # Known size for obstacle # Not needed for now
         }
