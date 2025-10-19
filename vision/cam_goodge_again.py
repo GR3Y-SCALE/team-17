@@ -248,12 +248,13 @@ def process_circle_groups(circles_data, frame, camera_matrix=None):
         # A robust way is to pass a bbox whose larger dimension is object_size_for_distance_px
         temp_bbox = (bbox_x1, bbox_y1, object_size_for_distance_px, object_size_for_distance_px) # Make it square
 
-        _, _, distance_m, bearing_deg = compute_distance_and_bearing(
+        _, _, distance_m, bearing_deg = compute_distance_and_bearing( # +5 is trim
             temp_bbox,
             frame.shape,
             known_size_mm_for_group,
             camera_matrix # Pass camera matrix
         )
+        bearing_deg += 5.0 # Trim adjustment
 
         # Draw bounding box around the circle group
         cv2.rectangle(frame, (bbox_x1, bbox_y1), (bbox_x2, bbox_y2), (0, 255, 0), 2)
@@ -343,12 +344,13 @@ def process_square_groups(square_bboxes, frame, camera_matrix=None):
         # Create a dummy bbox for compute_distance_and_bearing that reflects our chosen object_size_for_distance_px.
         temp_bbox = (bbox_x1, bbox_y1, object_size_for_distance_px, object_size_for_distance_px) # Make it square
 
-        _, _, distance_m, bearing_deg = compute_distance_and_bearing(
+        _, _, distance_m, bearing_deg = compute_distance_and_bearing( # +5 is trim
             temp_bbox,
             frame.shape,
             known_size_mm_for_group,
             camera_matrix # Pass camera matrix
         )
+        bearing_deg += 5 # Trim adjustment
 
         # Draw bounding box around the entire group
         cv2.rectangle(frame, (bbox_x1, bbox_y1), (bbox_x2, bbox_y2), (255, 0, 0), 2)

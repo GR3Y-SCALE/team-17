@@ -134,6 +134,18 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
     '''
     vision.UpdateObjects()
     landmark = object_lambda()
+    if landmark == (0,0):
+        if debug: print("Landmark not visible")
+        while landmark == (0,0):
+            if debug: print("Searching...")
+            robot.set_target_velocities(0.0, 100) # rototate right
+
+            vision.UpdateObjects()
+            landmark = object_lambda()
+            time.sleep(0.01)
+        time.sleep(0.1)
+    time.sleep(0.15)
+    robot.set_target_velocities(0.0, 0.0)
 
     nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
     while nav_data['rotational_vel'] > target_error:
@@ -190,7 +202,7 @@ item_name) = process_order.import_order(debug=True) # Process order
 bay_width = 0.265 # Meters
 # range finder height = 85mm
 gripper_to_range_finder = 0.140 # from tip range finder
-picking_staion_width = 0.295 # Meters
+picking_staion_width = 0.3 # Meters
 
 
 
@@ -201,10 +213,12 @@ picking_staion_width = 0.295 # Meters
 # shelf_number_for_deposit = [0,3,4]
 # # turn_padding = [11, -40, -50]
 
+# Amazing constants
+
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
 # lift_position = [110, 140, 0]
-lift_position_collection = [110,140,0] # Optimal lift positions for collecting items
-lift_position_bay = [120, 70, 30] # Tweak these for item placement in the shelf
+lift_position_collection = [125,140,0] # Optimal lift positions for collecting items
+lift_position_bay = [95,50,0] # Tweak these for item placement in the shelf
 
 
 def main():
@@ -216,7 +230,7 @@ def main():
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    gripper.lift(120)
+                    gripper.lift(lift_position_bay[2])
                     break
                     # robot.turn_degrees(90)
 
@@ -235,14 +249,14 @@ def main():
 
 
                     drive_by_range(1.0, 0.23) # Stop at second isle to make sure robot is aligned
-                    robot.turn_degrees(90) # Face wall
+                    robot.turn_degrees(85) # Face wall
 
 
-                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True, 5.0) # 5 degree trim
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True) # 5 degree trim
                     print("Pausing to chill")
                     time.sleep(2)
-                    center_to_landmark(lambda : vision.get_row_markers()[0], 0, 100, True)
-                    drive_by_range(1.2, 0.2) # this will make sure robot is at a good distance to drive onwards
+                    # center_to_landmark(lambda : vision.get_row_markers()[0], 0, 100, True)
+                    drive_by_range(1.2, 0.24) # this will make sure robot is at a good distance to drive onwards
                     robot.turn_degrees(-90) # Face wall
                     time.sleep(1)
                     print("At picking station")
@@ -253,10 +267,13 @@ def main():
                     vision.UpdateObjects()
                     print("Driving to align to picking station " + str(picking_station_num[iteration]))
 
-                    stopping_distance = (( 4 - picking_station_num[iteration]) * (picking_staion_width / 2)) - gripper_to_range_finder
+                    stopping_distance = (( 4 - picking_station_num[iteration]) * (picking_staion_width)) - gripper_to_range_finder
+                    print("Stopping distance from wall: " + str(stopping_distance))
 
-                    drive_by_range(stopping_distance, 0.2) # first picking station is furthest from the wall, invert
-                    robot.turn_degrees(-90)
+                    drive_by_range(stopping_distance, 0.25) # first picking station is furthest from the wall, invert
+                    print("At correct picking station distance")
+                    time.sleep(0.5)
+                    robot.turn_degrees(-80) # Face ramp
                     print("Aligned to picking station ramp")
                     time.sleep(1)
                     
@@ -274,23 +291,23 @@ def main():
                     gripper.gripper_open()
                     gripper.lift(lift_position_collection[0])
                     time.sleep(1.5)
-                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, 0.3, False)
+                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, 0.3, True) # Disable range finder for this
                     gripper.lift(lift_position_collection[1])
-                    time.sleep(1)
+                    time.sleep(2)
                     
                     # Nudge closer to item to ensure it is inside the gripper
-                    drive_by_range(0.185, 0.2)
-                    gripper.gripper_open()
+                    drive_by_range(0.15, 0.25)
                     time.sleep(1)
 
                     # Center to item if needed
-                    center_to_landmark(lambda : vision.get_items()[collection_item_index], 0.01, 20, True)
+                    # center_to_landmark(lambda : vision.get_items()[collection_item_index], 0.01, 20, True)
                     gripper.gripper_close()
+                    time.sleep(0.5)
                     print("Item Collected")
                     gripper.lift(lift_position_collection[2])
 
                     # back out of ramp
-                    drive_by_range(0.6, 0.2)
+                    drive_by_range(0.6, 0.25)
                     time.sleep(1) # makes sure everthing has settled
                     robot_navigation_state = robot_state.ENTER_ISLE
                 case robot_state.ENTER_ISLE:
@@ -299,25 +316,25 @@ def main():
                     if shelf_num[iteration] <= 1: # The first and second shelf, using closest wall as distance reference and therefore needing to turn right from ramp
                         robot.turn_degrees(85)
                         time.sleep(0.5)
-                        drive_by_range(0.30, 0.2) # optimal stopping distance to enter the first isle
+                        drive_by_range(0.30, 0.25) # optimal stopping distance to enter the first isle
                         print("At first isle")
                         turn_direction = 1
                     elif shelf_num[iteration] <= 3: # This is the second isle and therefore needs a 
                         robot.turn_degrees(90)
                         time.sleep(0.5)
-                        drive_by_range(0.97, 0.1) # optimal stopping distance to enter the second isle
+                        drive_by_range(0.97, 0.25) # optimal stopping distance to enter the second isle
                         print("At second isle")
                         turn_direction = 1
                     else:
                         robot.turn_degrees(-90)
                         time.sleep(0.5)
-                        drive_by_range(0.3, 0.1) # optimal stopping distance to enter third isle
+                        drive_by_range(0.3, 0.25) # optimal stopping distance to enter third isle
                         print("At third isle")
                         turn_direction = -1
                         # Note I might have to stop by the second isle to align myself better if turning acurracy is poor
 
                     # The robot has now moved just in front of the isle, now it needs to face the row marker.
-                    time.sleep(0.15)
+                    time.sleep(0.25)
                     robot.turn_degrees(90 * turn_direction)
                     time.sleep(1)
 
@@ -329,9 +346,12 @@ def main():
 
 
                     turn_direction = 1 if (shelf_num[iteration] % 2) else -1 # Turn 90 degrees to the left if even
+                    
+                    gripper.lift(0) # raise to miss shelvs when turning
+                    print("Lifting to avoid shelves when turning")
                     robot.turn_degrees(90 * turn_direction)
                     # Robot is now facing the correct bay, supposedly
-                    print("Positioned at isle, getting ready to place item.")
+                    print("Positioned at bay, getting ready to place item.")
                     time.sleep(1)
                     robot_navigation_state = robot_state.DESPOSIT_ITEM
                 case robot_state.DESPOSIT_ITEM:
@@ -339,23 +359,32 @@ def main():
                     print("Distance to bay from robot " + str(starting_distance))
 
                     gripper.led_red()
-                    distance_buffer = gripper_to_range_finder + 0.2 # buffer so gripper doesnt hit bay
+                    distance_buffer = gripper_to_range_finder + 0.2 # buffer so the gripper is clear of bay when coming down
                     if starting_distance < distance_buffer:
                         print("Too close to bay, backing up a bit")
-                        drive_by_range(distance_buffer, 0.1)
+                        drive_by_range(distance_buffer, 0.25)
                         starting_distance = nav.get_range_finder_distance() / 1000 # Convert to meters
                         print("New distance to bay from robot " + str(starting_distance))
-                    gripper.lift(lift_position_bay[bay_height[iteration]])
+                    gripper_lift_height = lift_position_bay[bay_height[iteration] - 1]
+                    gripper.lift(gripper_lift_height)
 
                     print("Raised lift to correct height")
                     time.sleep(1)
                     print("Now driving into bay.")
-                    drive_by_range(gripper_to_range_finder + 0.025, 0.15)
+
+                    if bay_height[iteration] - 1 == 1:
+                        print("WELP, IM BLIND SO TIME TO SEND IT.")
+                        robot.set_target_velocities(0.3, 0.0) # GO BLIND GO HARD
+                        time.sleep(2.5)
+                        gripper.gripper_open()
+                        robot.set_target_velocities(0.0, 0.0) # In theory the item is deposited
+                    else:     
+                        drive_by_range(gripper_to_range_finder + 0.1, 0.35) # Full send it in, at good distance 240mm from bay wall
 
                     gripper.gripper_open()
                     drive_by_range(starting_distance, 0.1)
                     print("Item Deposited!!!")
-                    robot_navigation_state = robot_state.RETURN_TO_PICKING_STATION
+                    robot_navigation_state = robot_state.DEBUGGING
                 case robot_state.RETURN_TO_PICKING_STATION:
                     # update camera
                     # turn to find row marker, then turn 180 degrees from it
@@ -365,7 +394,21 @@ def main():
                     # once at picking station, turn until bay marker is visible
                     iteration += 1
                     print(f"Completed {iteration} full iterations")
-                    robot_navigation_state = robot_state.COLLECT_ITEM
+                    robot_navigation_state = robot_state.FINISHED
+                case robot_state.FINISHED:
+                    print("Thats all folks!")
+                    for i in range(5):
+                        gripper.led_green()
+                        robot.turn_degrees(10)
+                        time.sleep(0.1)
+                        gripper.led_red()
+                        robot.turn_degrees(-10)
+                        time.sleep(0.1)
+                    print("Shutting down!")
+                    gripper.led_off()
+                    vision.camera_release()
+                    robot.stop_all()
+                    break
 
             
     except KeyboardInterrupt:
