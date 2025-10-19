@@ -53,11 +53,12 @@ else:
 
 class robot_state(Enum):
     DEBUGGING = auto()
-    APPROACH_PICKING_STATION = auto()
+    LEAVE_START_AREA = auto()
+    ALIGN_TO_PICKING_STATION = auto() # Will go to the correct ramp
     COLLECT_ITEM = auto()
     ENTER_ISLE = auto()
     DESPOSIT_ITEM = auto()
-    RETURN_TO_PICKING_STATION = auto()
+    RETURN_TO_PICKING_STATION = auto() # Will go to the centre station
 
 # class collection_state(Enum):
 #     ENTER_RAMP_BAY = auto()
@@ -147,22 +148,6 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Centred!")
 
-# def drive_by_range(target_distance, speed, debug=False):
-#     target_distance = target_distance * 1000 # convert to mm
-
-#     if speed > 0:
-#         while nav.get_range_finder_distance() > target_distance:
-#             if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
-#             robot.set_target_velocities(speed,0.0)
-#             time.sleep(0.001)
-#     else:
-#         while nav.get_range_finder_distance() < target_distance:
-#             if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
-#             robot.set_target_velocities(speed,0.0)
-#             time.sleep(0.001)
-#     robot.set_target_velocities(0.0,0.0)
-#     print("Reached set distance: " + str(nav.get_range_finder_distance()))
-
 def drive_by_range(target_distance, speed, padding_m=0.015, debug=False):
     target_distance_mm = target_distance * 1000  # convert to mm
     padding_mm = padding_m * 1000
@@ -226,13 +211,6 @@ def main():
     robot_navigation_state = robot_state.COLLECT_ITEM
     try:
         while True:
-            # now = time.time()
-            # elapsed = now - last_time
-            # while elapsed < dt:
-            #     time.sleep(dt - elapsed)
-            #     continue
-            # last_time = now 
-            # Update camera objects
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
@@ -240,10 +218,33 @@ def main():
                     break
                     # robot.turn_degrees(90)
 
+                case robot_state.LEAVE_START_AREA:
+                    gripper.led_yellow()
+                    vision.UpdateObjects()
+
+                    # Drive out of starting area
+                    go_to_landmark(lambda : vision.get_row_markers[0], 12.3, 0.2) # 123cm to row maker is optimal distance
+                    robot.turn_degrees(-90) # Turn to face wall inbetween shelf and picking station
+                    time.sleep(0.5)
+
+
+                    drive_by_range(1, 0.2) # Stop at second isle to make sure robot is aligned
+                    robot.turn_degrees(90) # Face picking station
+
+
+                    center_to_landmark(lambda : vision.get_row_markers()[0], 5, 20)
+                    drive_by_range(12.3, 0.2) # this will make sure robot is at a good distance to drive onwards
+                    robot.turn_degrees(-90) # Face picking station
+                    time.sleep(0.5)
+
+                    drive_by_range(1, 0.2) # Drive just in front of picking station, still facing the wall
+                    time.sleep(1)
+                    print("At picking station")
+
                 case robot_state.APPROACH_PICKING_STATION:
                     gripper.led_yellow()
                     vision.UpdateObjects()
-                    # Use first shelf to navigate to picking station and turn to face the correct marker
+                    
                     robot_navigation_state = robot_state.COLLECT_ITEM
                 case robot_state.COLLECT_ITEM:
                     # collection_item_index = picking_station_num[iteration] - 1 # Picking station's index starts at 1
