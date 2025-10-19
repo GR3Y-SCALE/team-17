@@ -82,8 +82,10 @@ def go_to_landmark(object_lambda, distance, speed, debug=True):
     # or you could have it as a parameter to this function.
     # Love Dan
     vision.UpdateObjects()
+    time.sleep(0.05)
     landmark = object_lambda()
     range_finder_distance = None
+    print(f"DEBUG: Initial landmark in go_to_landmark: {landmark}")
 
     if landmark is None:
         if debug: print("Landmark not visible")
