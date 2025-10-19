@@ -4,7 +4,7 @@ from navigation.range_finder.PiicoDev_VL53L1X import PiicoDev_VL53L1X
 
 import numpy as np
 import math
-import time
+import time, sys
 import matplotlib.pyplot as plt
 
 debug = False
@@ -19,7 +19,11 @@ class NavClass:
         print("[ OK ] Default nav gains set.")
 
         if range_finder:
-            self.distSensor = PiicoDev_VL53L1X()
+            try:
+                self.distSensor = PiicoDev_VL53L1X()
+                print("[ OK ] Laser range-finder initalised.")
+            except Exception as e:
+                print(f"[ ERROR ]: Cannot initialise range-finder. Reason: {e}", file=sys.stderr)
 
         self.forward_vel = 0
         self.rot_vel = 0
@@ -49,6 +53,9 @@ class NavClass:
         # You would likely call calculate_goal_velocities from here
         # with the current goal and detected obstacles.
     def get_range_finder_distance(self):
+        '''
+        returns distance to wall/face in front of laser in mm
+        '''
         return self.distSensor.read()
 
     def compute_attractive_field(self, goal_deg): # feed in angle of goal

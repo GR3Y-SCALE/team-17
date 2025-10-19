@@ -29,7 +29,7 @@ except:
     critical_fault = True
 
 try:
-    nav = NavClass(FOV=140, width=0.16)
+    nav = NavClass(FOV=140, width=0.16, range_finder=True)
 except Exception as e:
     print(f"[ ERROR ]: Cannot initialise navigation system. Reason: {e}", file=sys.stderr)
     critical_fault = True
@@ -124,6 +124,21 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Centred!")
 
+def drive_by_range(target_distance, speed, debug=False):
+    target_distance = target_distance * 1000 # convert to mm
+
+    if speed > 0:
+        while nav.get_range_finder_distance() > target_distance:
+            if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
+            robot.set_target_velocities(speed,0.0)
+            time.sleep(0.001)
+    else:
+        while nav.get_range_finder_distance() < target_distance:
+            if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
+            robot.set_target_velocities(speed,0.0)
+            time.sleep(0.001)
+    robot.set_target_velocities(0.0,0.0)
+    print("Reached set distance: " + str(nav.get_range_finder_distance()))
 
 
 iteration = 0
@@ -137,7 +152,7 @@ bay_height = [0, 1, 2]
 shelf_number_for_deposit = [0,3,4]
 # turn_padding = [11, -40, -50]
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
-lift_position = [120, 100, 0]
+lift_position = [110, 140, 0]
 
 def main():
     # last_time = time.time()
@@ -156,14 +171,20 @@ def main():
                     vision.UpdateObjects()
                     # print("Sick as")
                     print(vision.get_all())
-                    gripper.lift(0)
+                    gripper.gripper_open()
+                    gripper.lift(110)
                     time.sleep(1.5)
-                    go_to_landmark(lambda : vision.get_items()[0], 0.1, 0.3, False)
-                    # robot.drive_distance(-0.025)
+                    go_to_landmark(lambda : vision.get_items()[0], 0.15, 0.3, False)
+                    gripper.lift(140)
+                    time.sleep(1)
+                    drive_by_range(0.185, 0.2, True)
                     gripper.gripper_open()
                     time.sleep(1)
-                    center_to_landmark(lambda : vision.get_items()[0], 0.01, 0.2, False)
-                    gripper.lift(lift_position[0])
+                    center_to_landmark(lambda : vision.get_items()[0], 0.01, 20, True)
+                    gripper.gripper_close()
+                    gripper.lift(0)
+                    drive_by_range(0.5, -0.2, True)
+                    gripper.close()
                     break
                     # robot.turn_degrees(90)
 
