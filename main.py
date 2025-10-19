@@ -67,7 +67,7 @@ class robot_state(Enum):
 # robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 
-def go_to_landmark(object_lambda, distance, speed, disable_range_finder=False,debug=True):
+def go_to_landmark(object_lambda, distance, speed, disable_range_finder=False, debug=True, trim = 0.0):
     '''
     Drives the robot to a landmark in the warehouse using potential field, handles the event of object not being visible.
 
@@ -115,7 +115,7 @@ def go_to_landmark(object_lambda, distance, speed, disable_range_finder=False,de
 
         # Add some functionality to use range finder when error is low
 
-        nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
+        nav_data = nav.calculate_goal_velocities(landmark[1] + trim, None, False)
         robot.set_target_velocities(speed, -nav_data['rotational_vel'])
         print("Angle error:" + str(nav_data['rotational_vel']))
         time.sleep(0.01)
@@ -137,7 +137,7 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
 
     nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
     while nav_data['rotational_vel'] > target_error:
-        if debug: print("Error" + str(nav_data['rotational_vel']))
+        if debug: print("Error " + str(nav_data['rotational_vel']))
 
         vision.UpdateObjects()
         landmark = object_lambda()
@@ -229,32 +229,31 @@ def main():
                     print("Leaving starting area")
 
                     # Drive out of starting area
-                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.9, 0.26, True, True) # 123cm to row maker is optimal distance
-                    robot.turn_degrees(-80) # Turn to face wall inbetween shelf and picking station
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.9, 0.22, True, True) # 123cm to row maker is optimal distance
+                    robot.turn_degrees(-95) # Turn to face wall inbetween shelf and picking station
                     time.sleep(0.5)
 
 
-                    drive_by_range(1, 0.2) # Stop at second isle to make sure robot is aligned
-                    robot.turn_degrees(90) # Face picking station
+                    drive_by_range(1.0, 0.23) # Stop at second isle to make sure robot is aligned
+                    robot.turn_degrees(90) # Face wall
 
 
-                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True)
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True, 5.0) # 5 degree trim
+                    print("Pausing to chill")
+                    time.sleep(2)
                     center_to_landmark(lambda : vision.get_row_markers()[0], 0, 100, True)
                     drive_by_range(1.2, 0.2) # this will make sure robot is at a good distance to drive onwards
                     robot.turn_degrees(-90) # Face wall
-                    time.sleep(0.5)
-
-                    drive_by_range(0.4, 0.26) # Drive just in front of picking station, still facing the wall
-                    robot.turn_degrees(-90) # Face picking station
                     time.sleep(1)
                     print("At picking station")
+                    robot_navigation_state = robot_state.ALIGN_TO_PICKING_STATION
 
-                case robot_state.APPROACH_PICKING_STATION:
+                case robot_state.ALIGN_TO_PICKING_STATION:
                     gripper.led_yellow()
                     vision.UpdateObjects()
                     print("Driving to align to picking station " + str(picking_station_num[iteration]))
 
-                    stopping_distance = (( 4 - picking_station_num) * picking_staion_width / 2) - gripper_to_range_finder
+                    stopping_distance = (( 4 - picking_station_num[iteration]) * (picking_staion_width / 2)) - gripper_to_range_finder
 
                     drive_by_range(stopping_distance, 0.2) # first picking station is furthest from the wall, invert
                     robot.turn_degrees(-90)

@@ -15,7 +15,7 @@ class DriveSystem:
                  wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
                  control_hz: float = 300.0,
-                 kp: float = 1.15,
+                 kp: float = 1.0,
                  ki: float = 0.05,
                  kd: float = 0.03,
                  invert_left: bool = True,
