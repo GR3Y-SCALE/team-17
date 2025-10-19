@@ -67,7 +67,7 @@ class robot_state(Enum):
 # robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 
-def go_to_landmark(object_lambda, distance, speed, debug=True):
+def go_to_landmark(object_lambda, distance, speed, disable_range_finder=False,debug=True):
     '''
     Drives the robot to a landmark in the warehouse using potential field, handles the event of object not being visible.
 
@@ -88,15 +88,15 @@ def go_to_landmark(object_lambda, distance, speed, debug=True):
     range_finder_distance = None
     print(f"DEBUG: Initial landmark in go_to_landmark: {landmark}")
 
-    if landmark is None:
+    if landmark == (0,0):
         if debug: print("Landmark not visible")
-        while landmark is None:
+        while landmark == (0,0):
             if debug: print("Searching...")
-            robot.set_target_velocities(0.0, -0.05)
+            robot.set_target_velocities(0.0, 100) # rototate right
 
             vision.UpdateObjects()
             landmark = object_lambda()
-            time.sleep(0.001)
+            time.sleep(0.01)
         time.sleep(0.1)
     time.sleep(0.15)
     robot.set_target_velocities(0.0, 0.0)
@@ -108,7 +108,7 @@ def go_to_landmark(object_lambda, distance, speed, debug=True):
         vision.UpdateObjects()
         landmark = object_lambda()
 
-        if range_finder_distance is None:
+        if range_finder_distance is None or disable_range_finder:
             distance_to_landmark = landmark[0]
         else:
             distance_to_landmark = nav.get_range_finder_distance() / 1000.0 # convert to
@@ -210,23 +210,27 @@ lift_position_bay = [120, 70, 30] # Tweak these for item placement in the shelf
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.COLLECT_ITEM
+    robot_navigation_state = robot_state.LEAVE_START_AREA
     try:
         while True:
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    drive_by_range(0.2, 0.1)
+                    gripper.lift(120)
                     break
                     # robot.turn_degrees(90)
 
                 case robot_state.LEAVE_START_AREA:
                     gripper.led_yellow()
                     vision.UpdateObjects()
+                    print(vision.get_all())
+                    gripper.lift(0)
+                    time.sleep(1)
+                    print("Leaving starting area")
 
                     # Drive out of starting area
-                    go_to_landmark(lambda : vision.get_row_markers[0], 12.3, 0.2) # 123cm to row maker is optimal distance
-                    robot.turn_degrees(-90) # Turn to face wall inbetween shelf and picking station
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.9, 0.26, True, True) # 123cm to row maker is optimal distance
+                    robot.turn_degrees(-80) # Turn to face wall inbetween shelf and picking station
                     time.sleep(0.5)
 
 
@@ -234,12 +238,14 @@ def main():
                     robot.turn_degrees(90) # Face picking station
 
 
-                    center_to_landmark(lambda : vision.get_row_markers()[0], 5, 20)
-                    drive_by_range(12.3, 0.2) # this will make sure robot is at a good distance to drive onwards
-                    robot.turn_degrees(-90) # Face picking station
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True)
+                    center_to_landmark(lambda : vision.get_row_markers()[0], 0, 100, True)
+                    drive_by_range(1.2, 0.2) # this will make sure robot is at a good distance to drive onwards
+                    robot.turn_degrees(-90) # Face wall
                     time.sleep(0.5)
 
-                    drive_by_range(1, 0.2) # Drive just in front of picking station, still facing the wall
+                    drive_by_range(0.4, 0.26) # Drive just in front of picking station, still facing the wall
+                    robot.turn_degrees(-90) # Face picking station
                     time.sleep(1)
                     print("At picking station")
 
