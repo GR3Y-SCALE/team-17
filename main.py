@@ -66,7 +66,7 @@ class robot_state(Enum):
 # robot_collection_state = collection_state.HEADING_TO_CORRECT_BAY
 
 
-def go_to_landmark(object_lambda, distance, speed, debug=False):
+def go_to_landmark(object_lambda, distance, speed, debug=True):
     '''
     Drives the robot to a landmark in the warehouse using potential field, handles the event of object not being visible.
 
@@ -85,9 +85,9 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     landmark = object_lambda()
     range_finder_distance = None
 
-    if landmark == 0:
+    if landmark is None:
         if debug: print("Landmark not visible")
-        while landmark == 0:
+        while landmark is None:
             if debug: print("Searching...")
             robot.set_target_velocities(0.0, -0.05)
 
@@ -99,7 +99,8 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Found!")
     distance_to_landmark = landmark[0]
-    while distance_to_landmark > distance and distance_to_landmark != 0:
+    print("Distance to landmark: " + str(round(distance_to_landmark,2)))
+    while distance_to_landmark > distance:
         if debug: print("Going to landmark...")
         vision.UpdateObjects()
         landmark = object_lambda()
@@ -220,7 +221,7 @@ lift_position_bay = [120, 70, 30] # Tweak these for item placement in the shelf
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.APPROACH_PICKING_STATION
+    robot_navigation_state = robot_state.ENTER_ISLE
     try:
         while True:
             # now = time.time()
@@ -239,6 +240,7 @@ def main():
 
                 case robot_state.APPROACH_PICKING_STATION:
                     gripper.led_yellow()
+                    vision.UpdateObjects()
                     # Use first shelf to navigate to picking station and turn to face the correct marker
                     robot_navigation_state = robot_state.COLLECT_ITEM
                 case robot_state.COLLECT_ITEM:
@@ -299,10 +301,14 @@ def main():
                     # The robot has now moved just in front of the isle, now it needs to face the row marker.
                     time.sleep(0.15)
                     robot.turn_degrees(90 * turn_direction)
+                    time.sleep(1)
 
+                    vision.UpdateObjects()
                     # Now drive into the isle at the correct distance from the row marker to align correctly to bay
                     stopping_distance = bay_width * (4 - bay_num[iteration]) # third bay is closest to the row marker, invert
-                    go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance - gripper_to_range_finder, 0.15, True)
+                    go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance - gripper_to_range_finder, 0.15)
+                    print("At correct bay position")
+
 
                     turn_direction = 1 if (shelf_num[iteration] % 2) else -1 # Turn 90 degrees to the left if even
                     robot.turn_degrees(90 * turn_direction)
