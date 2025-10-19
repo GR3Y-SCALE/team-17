@@ -79,7 +79,7 @@ class NavClass:
         MAX_ROBOT_VEL = 0.05
         MAX_ROBOT_ROT = 3
         GOAL_P = 0.1 # Proportional bias
-        ROTATIONAL_BIAS = 0.9
+        ROTATIONAL_BIAS = 0.5
         CAMERA_FOV = self.FOV # Use the FOV from the class
 
         nav_state = {}

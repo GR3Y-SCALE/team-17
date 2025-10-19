@@ -77,9 +77,9 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     vision.UpdateObjects()
     landmark = object_lambda()
 
-    if landmark is 0:
+    if landmark == 0:
         if debug: print("Landmark not visible")
-        while landmark is 0:
+        while landmark == 0:
             if debug: print("Searching...")
             robot.set_target_velocities(0.0, -0.1)
 
@@ -88,21 +88,34 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
             time.sleep(0.001)
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Found!")
-    while landmark[0] > distance and landmark[0] is not 0:
+    while landmark[0] > distance and landmark[0] != 0:
         if debug: print("Going to landmark...")
         vision.UpdateObjects()
         landmark = object_lambda()
 
-        if nav_data['rotational_vel'] > 1:
-            pass
+        # Add some functionality to use range finder when error is low
 
         nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
         robot.set_target_velocities(speed, -nav_data['rotational_vel'])
         print("Angle error:" +str(nav_data['rotational_vel']))
         time.sleep(0.005)
+        if nav_data['rotational_vel'] > 1:
+            pass
         if debug: print('Distance to landmark: ' + str(round(landmark[0],2)))
     robot.set_target_velocities(0.0, 0.0)
     print("Complete!")
+
+    def center_to_landmark(object_lambda, target_error, speed, debug=False):
+        '''
+        Centres robot to landmark without driving forward, assumes landmark is visible.
+        '''
+        vision.UpdateObjects()
+        landmark = object_lambda()
+
+        nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
+        while nav_data['rotational_vel'] > target_error:
+            if debug: print
+
 
 
 iteration = 0
@@ -116,6 +129,7 @@ bay_height = [0, 1, 2]
 shelf_number_for_deposit = [0,3,4]
 # turn_padding = [11, -40, -50]
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
+lift_position = [120, 100, 0]
 
 def main():
     # last_time = time.time()
@@ -133,14 +147,15 @@ def main():
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
                     # print("Sick as")
-                    # print(vision.get_all())
-                    time.sleep(2)
-                    gripper.led_yellow()
-                    gripper.gripper_close()
+                    print(vision.get_all())
+                    gripper.lift(0)
+                    time.sleep(1.5)
+                    go_to_landmark(lambda : vision.get_items()[0], 0.1, 0.3, False)
+                    # robot.drive_distance(-0.025)
+                    gripper.gripper_open()
                     time.sleep(1)
-                    gripper.lift(120)
+                    gripper.lift(lift_position[0])
                     break
-                    # go_to_landmark(lambda : vision.get_items()[0], 0.1, 0.05, False)
                     # robot.turn_degrees(90)
 
                 case robot_state.APPROACH_PICKING_STATION:
