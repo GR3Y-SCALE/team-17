@@ -59,6 +59,7 @@ class robot_state(Enum):
     ENTER_ISLE = auto()
     DESPOSIT_ITEM = auto()
     RETURN_TO_PICKING_STATION = auto() # Will go to the centre station
+    FINISHED = auto()
 
 # class collection_state(Enum):
 #     ENTER_RAMP_BAY = auto()
@@ -227,7 +228,7 @@ lift_position_bay = [95,50,0] # Tweak these for item placement in the shelf
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.COLLECT_ITEM
+    robot_navigation_state = robot_state.LEAVE_START_AREA
     try:
         while True:
             match robot_navigation_state:
@@ -294,7 +295,16 @@ def main():
                     gripper.gripper_open()
                     gripper.lift(lift_position_collection[0])
                     time.sleep(1.5)
-                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, 0.3, True) # Disable range finder for this
+
+                    # Now I need to get good speeds to get up the different ramps
+                    if picking_station_num[iteration] == 1:
+                        ramp_speed = 0.3
+                    elif picking_station_num[iteration] == 2:
+                        ramp_speed = 0.4
+                    else:
+                        ramp_speed = 0.5
+
+                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, ramp_speed, True) # Disable range finder for this
                     gripper.lift(lift_position_collection[1])
                     time.sleep(2)
                     
