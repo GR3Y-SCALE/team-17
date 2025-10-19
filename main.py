@@ -187,7 +187,10 @@ def drive_by_range(target_distance, speed, padding_m=0.015, debug=False):
     time.sleep(0.15)
     robot.set_target_velocities(0.0, 0.0)
 
-
+def refresh_vision():
+    for i in range(10):
+        vision.UpdateObjects()  
+        time.sleep(0.01)
 iteration = 0
 dt = 0.1
 
@@ -224,7 +227,7 @@ lift_position_bay = [95,50,0] # Tweak these for item placement in the shelf
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.LEAVE_START_AREA
+    robot_navigation_state = robot_state.COLLECT_ITEM
     try:
         while True:
             match robot_navigation_state:
@@ -284,7 +287,7 @@ def main():
 
                     gripper.led_yellow()
                     print("Entering ramp")
-                    vision.UpdateObjects()
+                    refresh_vision() # Helps clear things up
                     print(vision.get_all())
 
                     # drive up ramp , might need gain adjustment for each different ramp
@@ -384,7 +387,7 @@ def main():
                     gripper.gripper_open()
                     drive_by_range(starting_distance, 0.1)
                     print("Item Deposited!!!")
-                    robot_navigation_state = robot_state.DEBUGGING
+                    robot_navigation_state = robot_state.RETURN_TO_PICKING_STATION
                 case robot_state.RETURN_TO_PICKING_STATION:
                     # update camera
                     # turn to find row marker, then turn 180 degrees from it
