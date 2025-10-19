@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 
-import os,sys,time,math
+import os,sys,time,math,csv
+from enum import Enum, auto
+
+from order_processing.process_order import Process_Order
+
 from mobility.drive_system import DriveSystem
 from navigation.NavClass import NavClass
 from vision.cam_goodge_again import VisionSystem
 from grippy.grippy_i2c import GrippyController
-from enum import Enum, auto
+
 
 critical_fault = False
+
+process_order = Process_Order()
 
 try:
     robot = DriveSystem()
@@ -48,7 +54,7 @@ class robot_state(Enum):
     DEBUGGING = auto()
     APPROACH_PICKING_STATION = auto()
     COLLECT_ITEM = auto()
-    FIND_ISLE = auto()
+    ENTER_ISLE = auto()
     DESPOSIT_ITEM = auto()
     RETURN_TO_PICKING_STATION = auto()
 
@@ -124,35 +130,76 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Centred!")
 
-def drive_by_range(target_distance, speed, debug=False):
-    target_distance = target_distance * 1000 # convert to mm
+# def drive_by_range(target_distance, speed, debug=False):
+#     target_distance = target_distance * 1000 # convert to mm
 
-    if speed > 0:
-        while nav.get_range_finder_distance() > target_distance:
-            if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
-            robot.set_target_velocities(speed,0.0)
-            time.sleep(0.001)
-    else:
-        while nav.get_range_finder_distance() < target_distance:
-            if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
-            robot.set_target_velocities(speed,0.0)
-            time.sleep(0.001)
-    robot.set_target_velocities(0.0,0.0)
-    print("Reached set distance: " + str(nav.get_range_finder_distance()))
+#     if speed > 0:
+#         while nav.get_range_finder_distance() > target_distance:
+#             if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
+#             robot.set_target_velocities(speed,0.0)
+#             time.sleep(0.001)
+#     else:
+#         while nav.get_range_finder_distance() < target_distance:
+#             if debug: print("Distance to face: " + str(nav.get_range_finder_distance()))
+#             robot.set_target_velocities(speed,0.0)
+#             time.sleep(0.001)
+#     robot.set_target_velocities(0.0,0.0)
+#     print("Reached set distance: " + str(nav.get_range_finder_distance()))
+
+def drive_by_range(target_distance, speed, padding_mm=0.05, debug=False):
+    target_distance_mm = target_distance * 1000  # convert to mm
+    padding_m = padding_mm * 1000
+
+    while True:
+        current_distance_mm = nav.get_range_finder_distance()
+
+        if debug:
+            print(f"Current distance: {current_distance_mm}mm, Target distance: {target_distance_mm}mm")
+
+        # Check if we are within the target range with padding
+        if abs(current_distance_mm - target_distance_mm) <= padding_m:
+            robot.set_target_velocities(0.0, 0.0)
+            print(f"Reached set distance (within {padding_m}mm padding): {current_distance_mm}mm")
+            break
+
+        # Move forward if too far
+        if current_distance_mm > target_distance_mm + padding_m:
+            robot.set_target_velocities(abs(speed), 0.0)
+        # Move backward if too close
+        elif current_distance_mm < target_distance_mm - padding_m:
+            robot.set_target_velocities(-abs(speed), 0.0)
+        
+        time.sleep(0.001)
 
 
 iteration = 0
 dt = 0.1
 
+(item_num, 
+picking_station_num, 
+shelf_num, 
+bay_num, 
+bay_height, 
+item_name) = process_order.import_order(debug=True) # Process order
 
-picking_station_order = [0, 1, 2]
-shelf_number = [0, 3, 5]
-bay_number = [0, 1, 0]
-bay_height = [0, 1, 2]
-shelf_number_for_deposit = [0,3,4]
-# turn_padding = [11, -40, -50]
+# Real world measurements
+bay_width = 0.265 # Meters
+# range finder height = 85mm
+gripper_to_range_finder = 0.140 # from tip range finder
+
+
+
+# picking_station_order = [0, 1, 2]
+# shelf_number = [0, 3, 5]
+# bay_number = [0, 1, 0]
+# bay_height = [0, 1, 2]
+# shelf_number_for_deposit = [0,3,4]
+# # turn_padding = [11, -40, -50]
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
-lift_position = [110, 140, 0]
+# lift_position = [110, 140, 0]
+lift_position_collection = [110,140,0] # Optimal lift positions for collecting items
+lift_position_bay = [120, 70, 30] # Tweak these for item placement in the shelf
+
 
 def main():
     # last_time = time.time()
@@ -169,46 +216,85 @@ def main():
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    # print("Sick as")
-                    print(vision.get_all())
-                    gripper.gripper_open()
-                    gripper.lift(110)
-                    time.sleep(1.5)
-                    go_to_landmark(lambda : vision.get_items()[0], 0.15, 0.3, False)
-                    gripper.lift(140)
-                    time.sleep(1)
-                    drive_by_range(0.185, 0.2, True)
-                    gripper.gripper_open()
-                    time.sleep(1)
-                    center_to_landmark(lambda : vision.get_items()[0], 0.01, 20, True)
-                    gripper.gripper_close()
-                    gripper.lift(0)
-                    drive_by_range(0.5, -0.2, True)
-                    gripper.close()
                     break
                     # robot.turn_degrees(90)
 
                 case robot_state.APPROACH_PICKING_STATION:
+                    gripper.led_yellow()
                     # Use first shelf to navigate to picking station and turn to face the correct marker
                     robot_navigation_state = robot_state.COLLECT_ITEM
                 case robot_state.COLLECT_ITEM:
+                    collection_item_index = picking_station_num[iteration] - 1 # Picking station's index starts at 1
+
+                    gripper.led_yellow()
                     print("Entering ramp")
-                    payload.arm_position('max')
-                    payload.open_claw()
-                    go_to_landmark(picking_station_marker[picking_station_order[iteration]], 0.3, 0.5)
-                    payload.arm_position('min')
-                    go_to_landmark(picking_station_marker[picking_station_order[iteration]], 0.05, 0.01)
-                    payload.close_claw()
-                    robot.drive_distance(-0.5) # Maybe be more precise when exiting ramp, relying less on dead reckoning
-                    robot_navigation_state = robot_state.FIND_ISLE
-                case robot_state.FIND_ISLE:
+                    vision.UpdateObjects()
+                    print(vision.get_all())
+
+                    # drive up ramp , might need gain adjustment for each different ramp
+                    gripper.gripper_open()
+                    gripper.lift(lift_position_collection[0])
+                    time.sleep(1.5)
+                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, 0.3, False)
+                    gripper.lift(lift_position_collection[1])
+                    time.sleep(1)
                     
-                    # search from left to right to find correct shelf
-                    # use potential field to drive to correct shelf, possibly modifying the field so it drives alongside it
-                    # once at correct shelf, turn until row marker is visible
-                    # drive to row marker and stop at set distance
+                    # Nudge closer to item to ensure it is inside the gripper
+                    drive_by_range(0.185, 0.2, True)
+                    gripper.gripper_open()
+                    time.sleep(1)
+
+                    # Center to item if needed
+                    center_to_landmark(lambda : vision.get_items(collection_item_index)[0], 0.01, 20, True)
+                    gripper.gripper_close()
+                    print("Item Collected")
+                    gripper.lift(lift_position_collection[2])
+
+                    # back out of ramp
+                    drive_by_range(0.5, 0.2, True)
+                    time.sleep(1) # makes sure everthing has settled
+                    robot_navigation_state = robot_state.ENTER_ISLE
+                case robot_state.ENTER_ISLE:
+                    gripper.led_yellow()
+                    # Might need to make sure I am reversed enough
+
+                    if shelf_num[iteration] <= 1: # The first and second shelf, using closest wall as distance reference and therefore needing to turn right from ramp
+                        robot.turn_degrees(90)
+                        drive_by_range(0.27, 0.1) # optimal stopping distance to enter the first isle
+                        turn_direction = 1
+                    elif shelf_num[iteration] <= 3: # This is the second isle and therefore needs a 
+                        robot.turn_degrees(90)
+                        drive_by_range(0.97, 0.1) # optimal stopping distance to enter the second isle
+                        turn_direction = 1
+                    else:
+                        robot.turn_degrees(-90)
+                        drive_by_range(0.3, 0.1) # optimal stopping distance to enter third isle
+                        turn_direction = -1
+                        # Note I might have to stop by the second isle to align myself better if turning acurracy is poor
+
+                    # The robot has now moved just in front of the isle, now it needs to face the row marker.
+                    robot.turn_degrees(90 * turn_direction)
+
+                    # Now drive into the isle at the correct distance from the row marker to align correctly to bay
+                    stopping_distance = bay_width * (4 - bay_num[iteration]) # third bay is closest to the row marker, invert
+                    go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance, 0.15)
+
+                    turn_direction = 1 if (shelf_num[iteration] % 2) else -1 # Turn 90 degrees to the left if even
+                    robot.turn_degrees(90 * turn_direction)
+                    # Robot is now facing the correct bay, supposedly
+                    time.sleep(1)
                     state = robot_state.DESPOSIT_ITEM
                 case robot_state.DESPOSIT_ITEM:
+                    starting_distance = nav.get_range_finder_distance()
+                    gripper.led_red
+                    gripper.lift(lift_position[bay_height[iteration]])
+                    
+                    drive_by_range(gripper_to_range_finder + 0.1, 0.05)
+                    gripper.gripper_open()
+                    drive_by_range(starting_distance, 0.1)
+                    gripper.
+
+
                     # update camera
                     # turn to face shelf
                     # drive to shelf and stop at set distance

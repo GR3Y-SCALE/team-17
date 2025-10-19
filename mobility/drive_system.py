@@ -2,6 +2,7 @@ import os, sys, time, math, threading
 from typing import Tuple, Optional
 from mobility.DFRobot_RaspberryPi_DC_Motor import THIS_BOARD_TYPE, DFRobot_DC_Motor_IIC as Board
 
+
 class DriveSystem:
     """
     A class to control a differential drive robot using the DFRobot DC Motor Driver.
@@ -14,9 +15,6 @@ class DriveSystem:
                  wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
                  control_hz: float = 300.0,
-                 kp: float = 1.0,
-                 ki: float = 0.04,
-                 kd: float = 0.08,
                  invert_left: bool = True,
                  invert_right: bool = False,
                  max_angular_rps: float = 1.0,
@@ -36,6 +34,7 @@ class DriveSystem:
             encoder_reduction_ratio: The gear reduction ratio for the motor encoders.
         """
         self.board = Board(i2c_bus, i2c_addr)
+        self.set_default_gains()
         
         # --- FIX: Added a retry loop to prevent hanging if the board isn't found ---
         print("Initialising motor driver...")
@@ -80,6 +79,14 @@ class DriveSystem:
         self._lock = threading.Lock()
         self._thread = None
 
+    def set_gains(self, KP=1.5, KI=0.05, KD=0.02):
+        '''
+        Sets gains
+        '''
+        kp: float = KP,
+        ki: float = KI,
+        kd: float = KD
+
     def stop_all(self):
         """Stops all motors and resets PID controllers."""
         self._running = False # Signal the control loop to stop
@@ -92,6 +99,7 @@ class DriveSystem:
         # self.board.motor_stop(self.board.ALL)
         for m in (self.board.M1, self.board.M2):
             self.board.motor_movement([m], self.board.CW, 0)
+
 
     def shutdown(self):
         """Shuts down the drive system, stopping motors and cleaning up the control thread."""
