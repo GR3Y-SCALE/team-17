@@ -20,12 +20,12 @@ class Process_Order:
                 if row[5] == 'Bottle' or row[5] == 'Weetbots' or row[5] == 'Item Name':
                     continue
                 else:
-                    item_num.append(row[0])
-                    picking_station_num.append(row[1])
-                    shelf_num.append(row[2])
-                    bay_num.append(row[3])
-                    bay_height.append(row[4])
-                    item_name.append(row[5])
+                    item_num.append(int(row[0]))
+                    picking_station_num.append(int(row[1]))
+                    shelf_num.append(int(row[2]))
+                    bay_num.append(int(row[3]))
+                    bay_height.append(int(row[4]))
+                    item_name.append(str(row[5]))
         print("[ OK ] Order processed.")
         if debug:
             print(item_num)
@@ -34,7 +34,6 @@ class Process_Order:
             print(bay_num)
             print(bay_height)
             print(item_name)
-            return
         return item_num, picking_station_num, shelf_num, bay_num, bay_height, item_name
     
 

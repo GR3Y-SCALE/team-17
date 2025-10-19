@@ -15,12 +15,13 @@ critical_fault = False
 
 process_order = Process_Order()
 
-try:
-    robot = DriveSystem()
-    pass
-except Exception as e:
-    print(f"[ ERROR ]: Cannot initialise mobility system. Reason: {e}", file=sys.stderr)
-    critical_fault = True
+# try:
+#     robot = DriveSystem()
+#     pass
+# except Exception as e:
+#     print(f"[ ERROR ]: Cannot initialise mobility system. Reason: {e}", file=sys.stderr)
+#     critical_fault = True
+robot = DriveSystem()
 
 try:
     vision = VisionSystem()
@@ -82,32 +83,44 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     # Love Dan
     vision.UpdateObjects()
     landmark = object_lambda()
+    range_finder_distance = None
 
     if landmark == 0:
         if debug: print("Landmark not visible")
         while landmark == 0:
             if debug: print("Searching...")
-            robot.set_target_velocities(0.0, -0.1)
+            robot.set_target_velocities(0.0, -0.05)
 
             vision.UpdateObjects()
             landmark = object_lambda()
             time.sleep(0.001)
+        time.sleep(0.1)
+    time.sleep(0.15)
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Found!")
-    while landmark[0] > distance and landmark[0] != 0:
+    distance_to_landmark = landmark[0]
+    while distance_to_landmark > distance and distance_to_landmark != 0:
         if debug: print("Going to landmark...")
         vision.UpdateObjects()
         landmark = object_lambda()
+
+        if range_finder_distance is None:
+            distance_to_landmark = landmark[0]
+        else:
+            distance_to_landmark = nav.get_range_finder_distance() / 1000.0 # convert to
 
         # Add some functionality to use range finder when error is low
 
         nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
         robot.set_target_velocities(speed, -nav_data['rotational_vel'])
-        print("Angle error:" +str(nav_data['rotational_vel']))
-        time.sleep(0.005)
-        if nav_data['rotational_vel'] > 1:
-            pass
+        print("Angle error:" + str(nav_data['rotational_vel']))
+        time.sleep(0.01)
         if debug: print('Distance to landmark: ' + str(round(landmark[0],2)))
+        if nav_data['rotational_vel'] < 10:
+            range_finder_distance = nav.get_range_finder_distance() / 1000 # convert to meters
+        else:
+            range_finder_distance = None # disable range finder when error is too high
+    time.sleep(0.15)
     robot.set_target_velocities(0.0, 0.0)
     print("Complete!")
 
@@ -126,7 +139,8 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
         landmark = object_lambda()
         nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
         robot.set_target_velocities(0.0, -nav_data['rotational_vel'])
-        time.sleep(0.005)
+        time.sleep(0.001)
+    time.sleep(0.15)
     robot.set_target_velocities(0.0, 0.0)
     if debug: print("Centred!")
 
@@ -146,9 +160,9 @@ def center_to_landmark(object_lambda, target_error, speed, debug=False):
 #     robot.set_target_velocities(0.0,0.0)
 #     print("Reached set distance: " + str(nav.get_range_finder_distance()))
 
-def drive_by_range(target_distance, speed, padding_mm=0.05, debug=False):
+def drive_by_range(target_distance, speed, padding_m=0.015, debug=False):
     target_distance_mm = target_distance * 1000  # convert to mm
-    padding_m = padding_mm * 1000
+    padding_mm = padding_m * 1000
 
     while True:
         current_distance_mm = nav.get_range_finder_distance()
@@ -157,19 +171,21 @@ def drive_by_range(target_distance, speed, padding_mm=0.05, debug=False):
             print(f"Current distance: {current_distance_mm}mm, Target distance: {target_distance_mm}mm")
 
         # Check if we are within the target range with padding
-        if abs(current_distance_mm - target_distance_mm) <= padding_m:
+        if abs(current_distance_mm - target_distance_mm) <= padding_mm:
             robot.set_target_velocities(0.0, 0.0)
-            print(f"Reached set distance (within {padding_m}mm padding): {current_distance_mm}mm")
+            print(f"Reached set distance (within {padding_mm}mm padding): {current_distance_mm}mm")
             break
 
         # Move forward if too far
-        if current_distance_mm > target_distance_mm + padding_m:
+        if current_distance_mm > target_distance_mm + padding_mm:
             robot.set_target_velocities(abs(speed), 0.0)
         # Move backward if too close
-        elif current_distance_mm < target_distance_mm - padding_m:
+        elif current_distance_mm < target_distance_mm - padding_mm:
             robot.set_target_velocities(-abs(speed), 0.0)
         
-        time.sleep(0.001)
+        time.sleep(0.01)
+    time.sleep(0.15)
+    robot.set_target_velocities(0.0, 0.0)
 
 
 iteration = 0
@@ -203,7 +219,8 @@ lift_position_bay = [120, 70, 30] # Tweak these for item placement in the shelf
 
 def main():
     # last_time = time.time()
-    robot_navigation_state = robot_state.DEBUGGING
+    iteration = 0
+    robot_navigation_state = robot_state.APPROACH_PICKING_STATION
     try:
         while True:
             # now = time.time()
@@ -216,6 +233,7 @@ def main():
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
+                    drive_by_range(0.2, 0.1)
                     break
                     # robot.turn_degrees(90)
 
@@ -224,7 +242,8 @@ def main():
                     # Use first shelf to navigate to picking station and turn to face the correct marker
                     robot_navigation_state = robot_state.COLLECT_ITEM
                 case robot_state.COLLECT_ITEM:
-                    collection_item_index = picking_station_num[iteration] - 1 # Picking station's index starts at 1
+                    # collection_item_index = picking_station_num[iteration] - 1 # Picking station's index starts at 1
+                    collection_item_index = 0
 
                     gripper.led_yellow()
                     print("Entering ramp")
@@ -240,65 +259,79 @@ def main():
                     time.sleep(1)
                     
                     # Nudge closer to item to ensure it is inside the gripper
-                    drive_by_range(0.185, 0.2, True)
+                    drive_by_range(0.185, 0.2)
                     gripper.gripper_open()
                     time.sleep(1)
 
                     # Center to item if needed
-                    center_to_landmark(lambda : vision.get_items(collection_item_index)[0], 0.01, 20, True)
+                    center_to_landmark(lambda : vision.get_items()[collection_item_index], 0.01, 20, True)
                     gripper.gripper_close()
                     print("Item Collected")
                     gripper.lift(lift_position_collection[2])
 
                     # back out of ramp
-                    drive_by_range(0.5, 0.2, True)
+                    drive_by_range(0.6, 0.2)
                     time.sleep(1) # makes sure everthing has settled
                     robot_navigation_state = robot_state.ENTER_ISLE
                 case robot_state.ENTER_ISLE:
                     gripper.led_yellow()
-                    # Might need to make sure I am reversed enough
 
                     if shelf_num[iteration] <= 1: # The first and second shelf, using closest wall as distance reference and therefore needing to turn right from ramp
-                        robot.turn_degrees(90)
-                        drive_by_range(0.27, 0.1) # optimal stopping distance to enter the first isle
+                        robot.turn_degrees(85)
+                        time.sleep(0.5)
+                        drive_by_range(0.30, 0.2) # optimal stopping distance to enter the first isle
+                        print("At first isle")
                         turn_direction = 1
                     elif shelf_num[iteration] <= 3: # This is the second isle and therefore needs a 
                         robot.turn_degrees(90)
+                        time.sleep(0.5)
                         drive_by_range(0.97, 0.1) # optimal stopping distance to enter the second isle
+                        print("At second isle")
                         turn_direction = 1
                     else:
                         robot.turn_degrees(-90)
+                        time.sleep(0.5)
                         drive_by_range(0.3, 0.1) # optimal stopping distance to enter third isle
+                        print("At third isle")
                         turn_direction = -1
                         # Note I might have to stop by the second isle to align myself better if turning acurracy is poor
 
                     # The robot has now moved just in front of the isle, now it needs to face the row marker.
+                    time.sleep(0.15)
                     robot.turn_degrees(90 * turn_direction)
 
                     # Now drive into the isle at the correct distance from the row marker to align correctly to bay
                     stopping_distance = bay_width * (4 - bay_num[iteration]) # third bay is closest to the row marker, invert
-                    go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance, 0.15)
+                    go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance - gripper_to_range_finder, 0.15, True)
 
                     turn_direction = 1 if (shelf_num[iteration] % 2) else -1 # Turn 90 degrees to the left if even
                     robot.turn_degrees(90 * turn_direction)
                     # Robot is now facing the correct bay, supposedly
+                    print("Positioned at isle, getting ready to place item.")
                     time.sleep(1)
-                    state = robot_state.DESPOSIT_ITEM
+                    robot_navigation_state = robot_state.DESPOSIT_ITEM
                 case robot_state.DESPOSIT_ITEM:
-                    starting_distance = nav.get_range_finder_distance()
-                    gripper.led_red
-                    gripper.lift(lift_position[bay_height[iteration]])
-                    
-                    drive_by_range(gripper_to_range_finder + 0.1, 0.05)
+                    starting_distance = nav.get_range_finder_distance() / 1000 # Convert to meters
+                    print("Distance to bay from robot " + str(starting_distance))
+
+                    gripper.led_red()
+                    distance_buffer = gripper_to_range_finder + 0.2 # buffer so gripper doesnt hit bay
+                    if starting_distance < distance_buffer:
+                        print("Too close to bay, backing up a bit")
+                        drive_by_range(distance_buffer, 0.1)
+                        starting_distance = nav.get_range_finder_distance() / 1000 # Convert to meters
+                        print("New distance to bay from robot " + str(starting_distance))
+                    gripper.lift(lift_position_bay[bay_height[iteration]])
+
+                    print("Raised lift to correct height")
+                    time.sleep(1)
+                    print("Now driving into bay.")
+                    drive_by_range(gripper_to_range_finder + 0.025, 0.15)
+
                     gripper.gripper_open()
                     drive_by_range(starting_distance, 0.1)
-
-
-                    # update camera
-                    # turn to face shelf
-                    # drive to shelf and stop at set distance
-                    # deposit item
-                    state = robot_state.RETURN_TO_PICKING_STATION
+                    print("Item Deposited!!!")
+                    robot_navigation_state = robot_state.RETURN_TO_PICKING_STATION
                 case robot_state.RETURN_TO_PICKING_STATION:
                     # update camera
                     # turn to find row marker, then turn 180 degrees from it
@@ -308,7 +341,7 @@ def main():
                     # once at picking station, turn until bay marker is visible
                     iteration += 1
                     print(f"Completed {iteration} full iterations")
-                    state = robot_state.COLLECT_ITEM
+                    robot_navigation_state = robot_state.COLLECT_ITEM
 
             
     except KeyboardInterrupt:

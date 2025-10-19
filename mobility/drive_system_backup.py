@@ -14,7 +14,7 @@ class DriveSystem:
                  i2c_addr: int = 0x10,
                  wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
-                 control_hz: float = 300.0,
+                 control_hz: float = 100.0,
                  kp: float = 1.0,
                  ki: float = 0.04,
                  kd: float = 0.08,
@@ -58,7 +58,7 @@ class DriveSystem:
         self.board.set_encoder_reduction_ratio(self.board.M1, encoder_reduction_ratio)
         self.board.set_encoder_reduction_ratio(self.board.M2, encoder_reduction_ratio)
         
-        self.board.set_moter_pwm_frequency(1000) # Its misspelt in the library
+        self.board.set_motor_pwm_frequency(1000)
 
         self.wheel_radius_m = wheel_radius_m
         self.track_width_m = track_width_m
@@ -314,8 +314,8 @@ class DriveSystem:
                 
                 # Read current encoder speeds (RPMs)
                 # --- FIX: Must read each encoder speed with a separate call ---
-                rpm_l_raw = self.board.get_encoder_speed(self.board.M1)
-                rpm_r_raw = self.board.get_encoder_speed(self.board.M2)
+                rpm_l_raw, rpm_r_raw = self.board.get_encoder_speed(self.board.ALL)
+                # rpm_r_raw = self.board.get_encoder_speed(self.board.M2)
                 
                 # Apply inversion for PID calculation (target vs measured direction)
                 rpm_l_meas = rpm_l_raw * (-1 if self.invert_left else 1)
@@ -326,7 +326,7 @@ class DriveSystem:
                     rpm_r_target = self._target_rpm_r
                     
                     # Left Motor PID Calculation
-                    err_l = rpm_l_target - rpm_l_meas # Error is target minus measured
+                    err_l = rpm_l_target - abs(rpm_l_meas) # Error is target minus measured
                     self._integral_l += err_l * self.dt
                     self._integral_l = max(min(self._integral_l, 200.0), -200.0) # Integral clamping
                     deriv_l = (err_l - self._prev_err_l) / self.dt
@@ -334,7 +334,7 @@ class DriveSystem:
                     self._prev_err_l = err_l
                     
                     # Right Motor PID Calculation
-                    err_r = rpm_r_target - rpm_r_meas # Error is target minus measured
+                    err_r = rpm_r_target - abs(rpm_r_meas) # Error is target minus measured
                     self._integral_r += err_r * self.dt
                     self._integral_r = max(min(self._integral_r, 200.0), -200.0) # Integral clamping
                     deriv_r = (err_r - self._prev_err_r) / self.dt

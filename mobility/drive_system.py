@@ -15,9 +15,9 @@ class DriveSystem:
                  wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
                  control_hz: float = 300.0,
-                 kp: float = 1.5,
+                 kp: float = 1.15,
                  ki: float = 0.05,
-                 kd: float = 0.02,
+                 kd: float = 0.03,
                  invert_left: bool = True,
                  invert_right: bool = False,
                  max_angular_rps: float = 1.0,
@@ -37,7 +37,7 @@ class DriveSystem:
             encoder_reduction_ratio: The gear reduction ratio for the motor encoders.
         """
         self.board = Board(i2c_bus, i2c_addr)
-        self.set_default_gains()
+        self.set_gains()
         
         # --- FIX: Added a retry loop to prevent hanging if the board isn't found ---
         print("Initialising motor driver...")
@@ -56,7 +56,7 @@ class DriveSystem:
         self.board.set_encoder_enable(self.board.ALL)
         self.board.set_encoder_reduction_ratio(self.board.ALL, encoder_reduction_ratio)
         # --- FIX: Corrected typo in method name 'set_moter_pwm_frequency' ---
-        self.board.set_motor_pwm_frequency(1000)
+        self.board.set_motor_pwm_frequency(10000)  # Set PWM frequency to 10kHz
 
         self.wheel_radius_m = wheel_radius_m
         self.track_width_m = track_width_m
@@ -127,7 +127,7 @@ class DriveSystem:
             angular_dps: Desired angular (turning) velocity in degrees per second.
         """
         # Convert angular velocity from degrees/sec to meters/sec for each wheel
-        angular_rps = angular_dps
+        angular_rps = math.radians(angular_dps)
         v_l, v_r = self._twist_to_wheel_speeds(linear_mps, angular_rps)
         rpm_l = self._mps_to_rpm(v_l)
         rpm_r = self._mps_to_rpm(v_r)
@@ -233,7 +233,7 @@ class DriveSystem:
 
                 # --- REFACTOR: PID logic is now clearer and more direct ---
                 # Left Motor PID Calculation
-                err_l = rpm_l_target - abs(rpm_l_meas)
+                err_l = abs(rpm_l_target) - abs(rpm_l_meas)
                 self._integral_l += err_l * self.dt
                 self._integral_l = max(min(self._integral_l, 200.0), -200.0) # Integral clamping
                 deriv_l = (err_l - self._prev_err_l) / self.dt
@@ -241,7 +241,7 @@ class DriveSystem:
                 self._prev_err_l = err_l
                 
                 # Right Motor PID Calculation
-                err_r = rpm_r_target - abs(rpm_r_meas)
+                err_r = abs(rpm_r_target) - abs(rpm_r_meas)
                 self._integral_r += err_r * self.dt
                 self._integral_r = max(min(self._integral_r, 200.0), -200.0) # Integral clamping
                 deriv_r = (err_r - self._prev_err_r) / self.dt
@@ -315,7 +315,7 @@ class DriveSystem:
         return (12 * self.wheel_radius_m) / self.track_width_m * rpm
 
 
-    def turn_degrees(self, degrees: float, angular_speed_dps: float = 45.0):
+    def turn_degrees(self, degrees: float, angular_speed_dps: float = 120.0):
         if angular_speed_dps <= 0.0:
             raise ValueError("Angular velocity must be positive")
         

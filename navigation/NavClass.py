@@ -36,7 +36,7 @@ class NavClass:
             self.state_machine = None
         print("[ OK ] NavClass initialised.")
 
-    def set_gains(self,max_robot_vel=0.05,max_robot_rot=3,goal_p=0.1,rot_bias=0.5):
+    def set_gains(self,max_robot_vel=0.05,max_robot_rot=100,goal_p=5,rot_bias=0.5):
         '''
         Set KP gains, no input defaults values.
         '''
