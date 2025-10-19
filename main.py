@@ -292,7 +292,6 @@ def main():
                     drive_by_range(gripper_to_range_finder + 0.1, 0.05)
                     gripper.gripper_open()
                     drive_by_range(starting_distance, 0.1)
-                    gripper.
 
 
                     # update camera
