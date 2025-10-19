@@ -105,16 +105,24 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     robot.set_target_velocities(0.0, 0.0)
     print("Complete!")
 
-    def center_to_landmark(object_lambda, target_error, speed, debug=False):
-        '''
-        Centres robot to landmark without driving forward, assumes landmark is visible.
-        '''
+def center_to_landmark(object_lambda, target_error, speed, debug=False):
+    '''
+    Centres robot to landmark without driving forward, assumes landmark is visible.
+    '''
+    vision.UpdateObjects()
+    landmark = object_lambda()
+
+    nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
+    while nav_data['rotational_vel'] > target_error:
+        if debug: print("Error" + str(nav_data['rotational_vel']))
+
         vision.UpdateObjects()
         landmark = object_lambda()
-
         nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
-        while nav_data['rotational_vel'] > target_error:
-            if debug: print
+        robot.set_target_velocities(0.0, -nav_data['rotational_vel'])
+        time.sleep(0.005)
+    robot.set_target_velocities(0.0, 0.0)
+    if debug: print("Centred!")
 
 
 
@@ -154,6 +162,7 @@ def main():
                     # robot.drive_distance(-0.025)
                     gripper.gripper_open()
                     time.sleep(1)
+                    center_to_landmark(lambda : vision.get_items()[0], 0.01, 0.2, False)
                     gripper.lift(lift_position[0])
                     break
                     # robot.turn_degrees(90)

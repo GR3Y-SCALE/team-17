@@ -15,9 +15,6 @@ class DriveSystem:
                  wheel_radius_m: float = 0.032,
                  track_width_m: float = 0.155,
                  control_hz: float = 300.0,
-                 kp: float = 1.5,
-                 ki: float = 0.05,
-                 kd: float = 0.02,
                  invert_left: bool = True,
                  invert_right: bool = False,
                  max_angular_rps: float = 1.0,
@@ -37,6 +34,7 @@ class DriveSystem:
             encoder_reduction_ratio: The gear reduction ratio for the motor encoders.
         """
         self.board = Board(i2c_bus, i2c_addr)
+        self.set_gains()
         
         # --- FIX: Added a retry loop to prevent hanging if the board isn't found ---
         print("Initialising motor driver...")
@@ -80,6 +78,14 @@ class DriveSystem:
         self._running = False
         self._lock = threading.Lock()
         self._thread = None
+
+    def set_gains(self, KP=1.5, KI=0.05, KD=0.02):
+        '''
+        Sets gains, run without input to set defaults.
+        '''
+        kp: float = KP,
+        ki: float = KI,
+        kd: float = KD
 
     def stop_all(self):
         """Stops all motors and resets PID controllers."""

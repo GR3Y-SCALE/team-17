@@ -15,6 +15,8 @@ class NavClass:
         self.width = width
         self.attractive_field = np.zeros(FOV + 1)
         self.repulsive_field = np.zeros(FOV + 1)
+        self.set_gains()
+        print("[ OK ] Default nav gains set.")
 
         if range_finder:
             self.distSensor = PiicoDev_VL53L1X()
@@ -29,6 +31,15 @@ class NavClass:
         else:
             self.state_machine = None
         print("[ OK ] NavClass initialised.")
+
+    def set_gains(self,max_robot_vel=0.05,max_robot_rot=3,goal_p=0.1,rot_bias=0.5):
+        '''
+        Set KP gains, no input defaults values.
+        '''
+        self.MAX_ROBOT_VEL = max_robot_vel
+        self.MAX_ROBOT_ROT = max_robot_rot
+        self.GOAL_P = goal_p # Proportional gain to turn error
+        self.ROTATIONAL_BIAS = rot_bias
 
     def update(self, event=None):
         if self.state_machine is not None:
@@ -76,19 +87,13 @@ class NavClass:
         return repulsive_field
 
     def calculate_goal_velocities(self, goal_deg, obstacles=None, debug=False):
-        MAX_ROBOT_VEL = 0.05
-        MAX_ROBOT_ROT = 3
-        GOAL_P = 0.1 # Proportional bias
-        ROTATIONAL_BIAS = 0.5
-        CAMERA_FOV = self.FOV # Use the FOV from the class
 
         nav_state = {}
-        # Call methods using self
-        goal_deg_reversed = int((CAMERA_FOV / 2) - goal_deg)
+        goal_deg_reversed = int((self.FOV / 2) - goal_deg)
         nav_state['attractive_field'] = self.compute_attractive_field(goal_deg_reversed) # reversed heading to match API
 
         if obstacles is None or len(obstacles) == 0:
-            nav_state['repulsive_field'] = np.zeros(CAMERA_FOV + 1)
+            nav_state['repulsive_field'] = np.zeros(self.FOV + 1)
         else:
             nav_state['repulsive_field'] = self.compute_repulsive_field(obstacles)
 
@@ -96,13 +101,13 @@ class NavClass:
 
         # get heading
         heading_angle = np.argmax(nav_state['residual_map'])
-        goal_error = heading_angle - CAMERA_FOV / 2
+        goal_error = heading_angle - self.FOV / 2
 
         # balance differential drive
-        nav_state['rotational_vel'] = min(MAX_ROBOT_ROT, max(-MAX_ROBOT_ROT, goal_error * GOAL_P))
+        nav_state['rotational_vel'] = min(self.MAX_ROBOT_ROT, max(-self.MAX_ROBOT_ROT, goal_error * self.GOAL_P))
         
         # Use the correct variable name for rotational velocity
-        nav_state['forward_vel'] = MAX_ROBOT_VEL * (1.0 - ROTATIONAL_BIAS * abs(nav_state['rotational_vel']) / MAX_ROBOT_ROT)
+        nav_state['forward_vel'] = self.MAX_ROBOT_VEL * (1.0 - self.ROTATIONAL_BIAS * abs(nav_state['rotational_vel']) / self.MAX_ROBOT_ROT)
 
         # Update class members
         self.rot_vel = nav_state['rotational_vel']
