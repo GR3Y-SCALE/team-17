@@ -7,8 +7,12 @@ I2C_ADDRESS = 0x08
 
 class GrippyController:
     def __init__(self, i2c_bus="/dev/i2c-1"):
-        self.bus = open(i2c_bus, "wb", buffering=0)
-        fcntl.ioctl(self.bus, I2C_SLAVE, I2C_ADDRESS)
+        try:
+            self.bus = open(i2c_bus, "wb", buffering=0)
+            fcntl.ioctl(self.bus, I2C_SLAVE, I2C_ADDRESS)
+            print("[ OK ] Initalised item collection.")
+        except:
+            print("[ ERROR ] Could not communicate with item collection")
 
     def send(self, cmd: str):
         """Send a command string to the Arduino via I2C."""
@@ -25,9 +29,11 @@ class GrippyController:
     def gripper_close(self): self.send("C")
 
     # --- Lift Control ---
-    def lift(self, level: int):
-        if 0 <= level <= 4:
-            self.send(f"L{level}")
+    def lift(self, angle: int):
+        if 0 <= angle <= 180:
+            self.send(f"L{angle}")
+        else:
+            print("[ ERROR ] Lift angle is between 0-180.")
 
     def cleanup(self):
         self.bus.close()

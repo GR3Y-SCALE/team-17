@@ -387,9 +387,9 @@ class VisionSystem:
         self.frame_cap = cv2.VideoCapture(0)
         # Check if camera opened successfully
         if not self.frame_cap.isOpened():
-            print("Error: Could not open video stream.")
+            print("[ Error ] Could not open video stream.")
             exit()
-        print("VisionSystem initialised successfully.")
+        print("[ OK ] VisionSystem initialised.")
 
         # --- Calibration Parameters ---
         self.camera_matrix = None
@@ -405,33 +405,44 @@ class VisionSystem:
             try:
                 self.camera_matrix = np.load("vision/camera_matrix.npy")
                 self.dist_coeffs = np.load("vision/dist_coeffs.npy")
-                print("Loaded camera calibration data.")
+                print("[ OK ] Loaded camera calibration data.")
             except Exception as e:
-                print(f"ERROR: Could not load calibration coefficients: {e}")
+                print(f"[ ERROR ] Could not load calibration coefficients: {e}")
         else:
-            print("ERROR: Camera calibration files (camera_matrix.npy, dist_coeffs.npy) not found in 'vision/' directory.")
+            print("[ ERROR ] Camera calibration files (camera_matrix.npy, dist_coeffs.npy) not found in 'vision/' directory.")
             
     def get_items(self):
-        return self.items_rb
+        return self.items_rb if self.items_rb else [(0,0)]
     def get_packing_stations(self):
-        return self.packing_station_rb
+        return self.packing_station_rb if self.packing_station_rb else [(0,0)]
     def get_row_markers(self):
-        return self.row_marker_rb
+        return self.row_marker_rb if self.row_marker_rb else [(0,0)]
     def get_shelves(self):
-        return self.shelf_rb
+        return self.shelf_rb if self.shelf_rb else [(0,0)]
     def get_picking_stations(self):
-        return self.picking_station_rb
+        return self.picking_station_rb if self.picking_station_rb else [(0,0)]
     def get_obstacles(self):
-        return self.obstacles_rb
+        return self.obstacles_rb if self.obstacles_rb else [(0,0)]
     def get_walls(self):
-        return self.walls_rb
+        return self.walls_rb if self.walls_rb else [(0,0)]
+    
+    def get_all(self):
+        return {
+            "items": self.items_rb,
+            "packing_stations": self.packing_station_rb,
+            "row_markers": self.row_marker_rb,
+            "shelves": self.shelf_rb,
+            "picking_stations": self.picking_station_rb,
+            "obstacles": self.obstacles_rb,
+            "walls": self.walls_rb
+        }
     
     def camera_release(self):
         self.frame_cap.release()
         cv2.destroyAllWindows()
 
 
-    def UpdateObjects(self):
+    def UpdateObjects(self, debug_mode=False):
         """ Main camera operation function"""
         # cleanup return variables
         self.items_rb.clear()
@@ -441,11 +452,12 @@ class VisionSystem:
         self.shelf_rb.clear()
         self.picking_station_rb.clear()
         self.walls_rb.clear()
+        self.debug_mode = debug_mode
 
         # Capture and preprocess frame
         ret, frame = self.frame_cap.read()
         if not ret:
-            print("Failed to grab frame.")
+            print("[ ERROR ] Failed to grab frame.")
             return
 
         frame = cv2.resize(frame, (640, 480))
@@ -458,7 +470,7 @@ class VisionSystem:
             # Get the optimal new camera matrix and ROI only once
             if self.new_camera_matrix is None or self.roi is None:
                 self.new_camera_matrix, self.roi = cv2.getOptimalNewCameraMatrix(self.camera_matrix, self.dist_coeffs, (w, h), 1, (w, h))
-                print("Calculated optimal new camera matrix and ROI for undistortion.")
+                print("[ OK ] Calibrated vision for undistortion")
 
             # Undistort
             undistorted_frame = cv2.undistort(frame, self.camera_matrix, self.dist_coeffs, None, self.new_camera_matrix)
@@ -534,7 +546,7 @@ class VisionSystem:
                     )
 
                     text = f"{label}: {distance_m:.2f} m, {bearing_deg:.1f} degrees"
-                    cv2.putText(frame, text, (x+w+5, y+h-5), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
+                    cv2.putText(frame, text, (x+w+10, y+h-10), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
 
                     # ===== POPULATE RETURN VARIABLES FOR COLOR DETECTION HERE =====
                     if label == "Item": 
@@ -576,16 +588,17 @@ class VisionSystem:
 
 
         # Display results
-        show_frame(frame)
+        
         if self.debug_mode:
-            cv2.imshow("CLAHE Enhanced Frame", enhanced_bgr)
-            cv2.imshow("Orange Mask (Item)", mask_orange)
-            cv2.imshow("Yellow Mask (Platform)", mask_yellow)
-            cv2.imshow("Blue Mask (Shelf)", mask_blue)
-            cv2.imshow("White Mask (Wall)", mask_white)
-            cv2.imshow("Green Mask (Obstacle)", mask_green)
-            cv2.imshow("All Black Mask (Bay/Picking)", all_black_mask)
-            print("Frame processed")
+            show_frame(frame)
+            # cv2.imshow("CLAHE Enhanced Frame", enhanced_bgr)
+            # cv2.imshow("Orange Mask (Item)", mask_orange)
+            # cv2.imshow("Yellow Mask (Platform)", mask_yellow)
+            # cv2.imshow("Blue Mask (Shelf)", mask_blue)
+            # cv2.imshow("White Mask (Wall)", mask_white)
+            # cv2.imshow("Green Mask (Obstacle)", mask_green)
+            # cv2.imshow("All Black Mask (Bay/Picking)", all_black_mask)
+            # print("Frame processed")
             
 
 # Example usage (you can add this outside the class or in a main function)

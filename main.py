@@ -4,6 +4,7 @@ import os,sys,time,math
 from mobility.drive_system import DriveSystem
 from navigation.NavClass import NavClass
 from vision.cam_goodge_again import VisionSystem
+from grippy.grippy_i2c import GrippyController
 from enum import Enum, auto
 
 critical_fault = False
@@ -12,26 +13,34 @@ try:
     robot = DriveSystem()
     pass
 except Exception as e:
-    print(f"ERROR: Cannot initialise mobility system. Reason: {e}", file=sys.stderr)
+    print(f"[ ERROR ]: Cannot initialise mobility system. Reason: {e}", file=sys.stderr)
     critical_fault = True
 
 try:
     vision = VisionSystem()
 except Exception as e:
-    print(f"ERROR: Cannot initialise vision system. Reason: {e}", file=sys.stderr)
+    print(f"[ ERROR ]: Cannot initialise vision system. Reason: {e}", file=sys.stderr)
+    critical_fault = True
+
+try:
+    gripper = GrippyController()
+except:
+    print(f"[ ERROR ]: Cannot initialise item collection system. Reason: {e}", file=sys.stderr)
     critical_fault = True
 
 try:
     nav = NavClass(FOV=140, width=0.16)
 except Exception as e:
-    print(f"ERROR: Cannot initialise navigation system. Reason: {e}", file=sys.stderr)
+    print(f"[ ERROR ]: Cannot initialise navigation system. Reason: {e}", file=sys.stderr)
     critical_fault = True
 # nav = NavClass(FOV=140, width=0.16)
 
 if not critical_fault: 
-    print("Systems initialised, ready to rock")
+    print("[ OK ] Systems initialised, ready to rock and roll")
+    gripper.led_green()
 else:
-    print("Ruh roh, somethings borked")
+    print("[ RUH ROH ] somethings borked")
+    gripper.led_red()
 
 
 
@@ -68,28 +77,31 @@ def go_to_landmark(object_lambda, distance, speed, debug=False):
     vision.UpdateObjects()
     landmark = object_lambda()
 
-    if landmark is None:
+    if landmark is 0:
         if debug: print("Landmark not visible")
-        while landmark is None:
+        while landmark is 0:
             if debug: print("Searching...")
-            robot.SetTargetVelocities(0.0, -0.1)
+            robot.set_target_velocities(0.0, -0.1)
 
             vision.UpdateObjects()
             landmark = object_lambda()
             time.sleep(0.001)
-    robot.SetTargetVelocities(0.0, 0.0)
+    robot.set_target_velocities(0.0, 0.0)
     if debug: print("Found!")
-    obs = vision.get_obstacles()
-    while landmark[0] > distance and landmark[0] is not None:
+    while landmark[0] > distance and landmark[0] is not 0:
         if debug: print("Going to landmark...")
         vision.UpdateObjects()
         landmark = object_lambda()
 
-        nav_data = nav.calculate_goal_velocities(int(math.degrees(landmark[1])), None, True)
-        robot.SetTargetVelocities(speed, nav_data['rotational_vel'])
-        time.sleep(0.001)
+        if nav_data['rotational_vel'] > 1:
+            pass
+
+        nav_data = nav.calculate_goal_velocities(landmark[1], None, False)
+        robot.set_target_velocities(speed, -nav_data['rotational_vel'])
+        print("Angle error:" +str(nav_data['rotational_vel']))
+        time.sleep(0.005)
         if debug: print('Distance to landmark: ' + str(round(landmark[0],2)))
-    robot.SetTargetVelocities(0.0, 0.0)
+    robot.set_target_velocities(0.0, 0.0)
     print("Complete!")
 
 
@@ -120,9 +132,16 @@ def main():
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    print("Sick as")
-                    print(vision.get_shelves())
-                    time.sleep(0.1)
+                    # print("Sick as")
+                    # print(vision.get_all())
+                    time.sleep(2)
+                    gripper.led_yellow()
+                    gripper.gripper_close()
+                    time.sleep(1)
+                    gripper.lift(120)
+                    break
+                    # go_to_landmark(lambda : vision.get_items()[0], 0.1, 0.05, False)
+                    # robot.turn_degrees(90)
 
                 case robot_state.APPROACH_PICKING_STATION:
                     # Use first shelf to navigate to picking station and turn to face the correct marker
@@ -131,7 +150,7 @@ def main():
                     print("Entering ramp")
                     payload.arm_position('max')
                     payload.open_claw()
-                    go_to_landmark(picking_station_marker[picking_station_order[iteration]], 0.3, 0.02)
+                    go_to_landmark(picking_station_marker[picking_station_order[iteration]], 0.3, 0.5)
                     payload.arm_position('min')
                     go_to_landmark(picking_station_marker[picking_station_order[iteration]], 0.05, 0.01)
                     payload.close_claw()
@@ -164,6 +183,7 @@ def main():
             
     except KeyboardInterrupt:
         print("Exiting")
+        gripper.led_off()
         vision.camera_release()
         robot.stop_all()
 

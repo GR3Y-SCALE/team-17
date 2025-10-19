@@ -28,7 +28,7 @@ class NavClass:
             self.state_machine = sm.StateMachine(robot)
         else:
             self.state_machine = None
-        print("NavClass initialised successfully.")
+        print("[ OK ] NavClass initialised.")
 
     def update(self, event=None):
         if self.state_machine is not None:
@@ -77,9 +77,9 @@ class NavClass:
 
     def calculate_goal_velocities(self, goal_deg, obstacles=None, debug=False):
         MAX_ROBOT_VEL = 0.05
-        MAX_ROBOT_ROT = 0.075
-        GOAL_P = 0.01 # Proportional bias
-        ROTATIONAL_BIAS = 0.05
+        MAX_ROBOT_ROT = 3
+        GOAL_P = 0.1 # Proportional bias
+        ROTATIONAL_BIAS = 0.9
         CAMERA_FOV = self.FOV # Use the FOV from the class
 
         nav_state = {}
