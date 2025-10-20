@@ -221,20 +221,20 @@ picking_staion_width = 0.3 # Meters
 
 bay_depth = [0.05, 0.05, 0.05] # How far in the robot needs to go for each shelf, partly redundant
 # lift_position = [110, 140, 0]
-lift_position_collection = [125,140,0] # Optimal lift positions for collecting items
+lift_position_collection = [120,140,0] # Optimal lift positions for collecting items
 lift_position_bay = [95,50,0] # Tweak these for item placement in the shelf
 
 
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.LEAVE_START_AREA
+    robot_navigation_state = robot_state.COLLECT_ITEM
     try:
         while True:
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    gripper.lift(lift_position_bay[2])
+                    gripper.lift(80)
                     break
                     # robot.turn_degrees(90)
 
@@ -247,13 +247,14 @@ def main():
                     print("Leaving starting area")
 
                     # Drive out of starting area
-                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.9, 0.22, True, True) # 123cm to row maker is optimal distance
+                    go_to_landmark(lambda : vision.get_row_markers()[0], 0.9, 0.22, True, True) #  optimal distance
                     robot.turn_degrees(-95) # Turn to face wall inbetween shelf and picking station
                     time.sleep(0.5)
 
 
-                    drive_by_range(1.0, 0.23) # Stop at second isle to make sure robot is aligned
-                    robot.turn_degrees(85) # Face wall
+                    drive_by_range(0.90, 0.23) # Stop at second isle to make sure robot is aligned
+                    robot.turn_degrees(85) # Face row marker
+                    time.sleep(0.5)
 
 
                     go_to_landmark(lambda : vision.get_row_markers()[0], 0.7, 0.26, True, True) # 5 degree trim
@@ -261,7 +262,7 @@ def main():
                     time.sleep(2)
                     # center_to_landmark(lambda : vision.get_row_markers()[0], 0, 100, True)
                     drive_by_range(1.2, 0.24) # this will make sure robot is at a good distance to drive onwards
-                    robot.turn_degrees(-90) # Face wall
+                    robot.turn_degrees(-80) # Face wall
                     time.sleep(1)
                     print("At picking station")
                     robot_navigation_state = robot_state.ALIGN_TO_PICKING_STATION
@@ -277,7 +278,7 @@ def main():
                     drive_by_range(stopping_distance, 0.25) # first picking station is furthest from the wall, invert
                     print("At correct picking station distance")
                     time.sleep(0.5)
-                    robot.turn_degrees(-80) # Face ramp
+                    robot.turn_degrees(-75) # Face ramp
                     print("Aligned to picking station ramp")
                     time.sleep(1)
                     
@@ -293,7 +294,11 @@ def main():
 
                     # drive up ramp , might need gain adjustment for each different ramp
                     gripper.gripper_open()
-                    gripper.lift(lift_position_collection[0])
+                    # if picking_station_num[iteration] == 3:
+                    #     gripper_ramp_position = 60 # accomodate for ramp angle of third ramp
+                    # else:
+                    #     gripper_ramp_position = lift_position_collection[0]
+                    gripper.lift(60)
                     time.sleep(1.5)
 
                     # Now I need to get good speeds to get up the different ramps
@@ -303,8 +308,10 @@ def main():
                         ramp_speed = 0.4
                     else:
                         ramp_speed = 0.5
-
-                    go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, ramp_speed, True) # Disable range finder for this
+                    if picking_station_num[iteration] == 3:
+                        go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.2, ramp_speed, True)
+                    else:
+                        go_to_landmark(lambda : vision.get_items()[collection_item_index], 0.15, ramp_speed, True) # Disable range finder for this
                     gripper.lift(lift_position_collection[1])
                     time.sleep(2)
                     
@@ -318,9 +325,15 @@ def main():
                     time.sleep(0.5)
                     print("Item Collected")
                     gripper.lift(lift_position_collection[2])
+                    if picking_station_num[iteration] == 3:
+                        time.sleep(2) # extra time to settle on ramp
 
                     # back out of ramp
-                    drive_by_range(0.6, 0.25)
+                    if picking_station_num[iteration] == 3:
+                        gripper.lift(75)
+                        drive_by_range(0.2, 0.1)
+                    else:
+                        drive_by_range(0.6, 0.25) # leave ramp at good distance
                     time.sleep(1) # makes sure everthing has settled
                     robot_navigation_state = robot_state.ENTER_ISLE
                 case robot_state.ENTER_ISLE:
@@ -333,13 +346,13 @@ def main():
                         print("At first isle")
                         turn_direction = 1
                     elif shelf_num[iteration] <= 3: # This is the second isle and therefore needs a 
-                        robot.turn_degrees(90)
+                        robot.turn_degrees(85)
                         time.sleep(0.5)
-                        drive_by_range(0.97, 0.25) # optimal stopping distance to enter the second isle
+                        drive_by_range(1.1, 0.25) # optimal stopping distance to enter the second isle
                         print("At second isle")
                         turn_direction = 1
                     else:
-                        robot.turn_degrees(-90)
+                        robot.turn_degrees(-78)
                         time.sleep(0.5)
                         drive_by_range(0.3, 0.25) # optimal stopping distance to enter third isle
                         print("At third isle")
@@ -351,7 +364,7 @@ def main():
                     robot.turn_degrees(90 * turn_direction)
                     time.sleep(1)
 
-                    vision.UpdateObjects()
+                    refresh_vision()
                     # Now drive into the isle at the correct distance from the row marker to align correctly to bay
                     stopping_distance = bay_width * (4 - bay_num[iteration]) # third bay is closest to the row marker, invert
                     go_to_landmark(lambda: vision.get_row_markers()[0], stopping_distance - gripper_to_range_finder, 0.15)
