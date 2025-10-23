@@ -12,7 +12,7 @@ class Process_Order:
         bay_height = []
         item_name = []
         if debug: print(os.path.abspath(os.getcwd()))
-        with open("order_processing/Order_1_2025.csv", mode="r", encoding='utf-8-sig') as csv_file:
+        with open("order_processing/Order_2_2025.csv", mode="r", encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
 
             for row in csv_reader:
