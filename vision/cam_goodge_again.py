@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import math
+import math,time
 from sklearn.cluster import DBSCAN
 import os # Import os for checking file existence
 
@@ -590,7 +590,7 @@ class VisionSystem:
 
 
         # Display results
-        
+        # show_frame(frame)
         if self.debug_mode:
             show_frame(frame)
             # cv2.imshow("CLAHE Enhanced Frame", enhanced_bgr)
@@ -615,6 +615,7 @@ if __name__ == "__main__":
             # print("Items:", vs.get_items())
             # print("Picking Stations:", vs.get_picking_stations())
             # print("Row Markers (Bay Numbers):", vs.get_row_markers())
+            time.sleep(2)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):

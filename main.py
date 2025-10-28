@@ -228,14 +228,13 @@ lift_position_bay = [95,50,0] # Tweak these for item placement in the shelf
 def main():
     # last_time = time.time()
     iteration = 0
-    robot_navigation_state = robot_state.DEBUGGING
+    robot_navigation_state = robot_state.LEAVE_START_AREA
     try:
         while True:
             match robot_navigation_state:
                 case robot_state.DEBUGGING:
                     vision.UpdateObjects()
-                    print(nav.get_range_finder_distance())
-                    gripper.gripper_close()
+                    
                     break
                     # robot.turn_degrees(90)
 
@@ -253,7 +252,7 @@ def main():
                     time.sleep(0.5)
 
 
-                    drive_by_range(0.90, 0.23) # Stop at second isle to make sure robot is aligned
+                    drive_by_range(1, 0.23) # Stop at second isle to make sure robot is aligned
                     robot.turn_degrees(85) # Face row marker
                     time.sleep(0.5)
 
@@ -317,7 +316,7 @@ def main():
                     time.sleep(2)
                     
                     # Nudge closer to item to ensure it is inside the gripper
-                    drive_by_range(0.17, 0.25)
+                    drive_by_range(0.15, 0.25)
                     time.sleep(1)
 
                     # Center to item if needed
@@ -364,7 +363,7 @@ def main():
                         print("At second isle")
                         turn_direction = 1
                     else:
-                        robot.turn_degrees(-60)
+                        robot.turn_degrees(-70)
                         time.sleep(0.5)
                         drive_by_range(0.3, 0.25) # optimal stopping distance to enter third isle
                         print("At third isle")
